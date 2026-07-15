@@ -53,29 +53,29 @@
   #dashboard{display:none;}
   #dashboard.show{display:block;}
 
-  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px;}
-  @media (max-width:1000px){ .kpi-row{grid-template-columns:repeat(3,1fr);} }
-  @media (max-width:600px){ .kpi-row{grid-template-columns:repeat(2,1fr);} }
+  /* Ajustado para 4 colunas (sem KPI Críticos) */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+  @media (max-width:1000px){ .kpi-row{grid-template-columns:repeat(2,1fr);} }
   .kpi{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 16px;position:relative;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,0.01);}
   .kpi .bar{position:absolute;top:0;left:0;width:4px;height:100%;}
   .kpi.pending .bar{background:var(--pending);}
-  .kpi.critical .bar{background:var(--text);}
   .kpi.done .bar{background:var(--done);}
   .kpi.total .bar{background:var(--text-faint);}
   .kpi.pct .bar{background:var(--warn);}
   .kpi .label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;font-weight:700;}
   .kpi .value{font-family:var(--mono);font-size:26px;font-weight:700;margin-top:4px;line-height:1;color:var(--text);}
   .kpi.pending .value{color:var(--pending);}
-  .kpi.critical .value{color:#000;}
   .kpi.done .value{color:var(--done);}
   .kpi.pct .value{color:var(--warn);}
 
-  .grid-3{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;margin-bottom:16px;}
-  @media (max-width:1000px){ .grid-3{grid-template-columns:1fr;} }
+  /* Ajustado para 4 colunas para acomodar Sub Regional */
+  .grid-4{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;}
+  @media (max-width:1100px){ .grid-4{grid-template-columns:1fr 1fr;} }
+  @media (max-width:650px){ .grid-4{grid-template-columns:1fr;} }
   .panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,0.01);}
   .panel h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin:0 0 10px;font-weight:700;border-bottom:1px solid var(--line);padding-bottom:6px;}
 
-  .unit-row{display:grid;grid-template-columns:1.1fr auto 70px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);}
+  .unit-row{display:grid;grid-template-columns:1.1fr auto 50px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);}
   .unit-row:last-child{border-bottom:none;}
   .unit-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .unit-count{font-family:var(--mono);font-size:12px;color:var(--pending);font-weight:700;}
@@ -87,6 +87,7 @@
   .compact-name{color:var(--text-dim);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .compact-count{font-family:var(--mono);color:var(--pending);font-weight:700;}
   .compact-row.analyst-row .compact-count{color:var(--warn);}
+  .compact-row.subreg-row .compact-count{color:var(--text);}
 
   .queue-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:10px;flex-wrap:wrap;}
   .queue-controls{display:flex;gap:8px;flex-wrap:wrap;}
@@ -148,13 +149,12 @@
   <div id="dashboard">
     <div class="kpi-row">
       <div class="kpi pending"><div class="bar"></div><div class="label">Pendente Geral</div><div class="value" id="kpi-pending">—</div></div>
-      <div class="kpi critical"><div class="bar"></div><div class="label">Críticos (> 7 dias)</div><div class="value" id="kpi-critical">—</div></div>
       <div class="kpi done"><div class="bar"></div><div class="label">Concluídos</div><div class="value" id="kpi-done">—</div></div>
       <div class="kpi total"><div class="bar"></div><div class="label">Total Geral</div><div class="value" id="kpi-total">—</div></div>
       <div class="kpi pct"><div class="bar"></div><div class="label">% Concluído</div><div class="value" id="kpi-pct">—</div></div>
     </div>
 
-    <div class="grid-3">
+    <div class="grid-4">
       <div class="panel">
         <h2>Pendências por unidade</h2>
         <div id="unit-list"></div>
@@ -162,6 +162,10 @@
       <div class="panel">
         <h2>Pendências por Analista</h2>
         <div id="analyst-list"></div>
+      </div>
+      <div class="panel">
+        <h2>Pendências por Sub Regional</h2>
+        <div id="subreg-list"></div>
       </div>
       <div class="panel">
         <h2>Pendências por função</h2>
@@ -221,7 +225,7 @@ let tokenClient;
 let records = [];
 let isGapiLoaded = false;
 let isGisLoaded = false;
-const EXCLUDED_KEYWORDS = ['site leader', 'regional', 'sub regional']; // Site Leader restaurado com sucesso
+const EXCLUDED_KEYWORDS = ['site leader', 'regional', 'sub regional']; 
 const BLOCKED_SHEET_KEYWORDS = ['query','consolidado','summary','modelo','cargos','base nomes','duplicar'];
 
 window.addEventListener('load', () => {
@@ -362,12 +366,13 @@ async function fetchAllSheetsFromGoogle(){
 }
 
 function processSheetRows(rows, sheetName, analyst){
-  let headerIdx=-1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1;
+  let headerIdx=-1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
   for(let r=0; r<Math.min(rows.length, 10); r++){
     const idx = findHeaderCol(rows[r]||[], ['ops id']);
     if(idx !== -1){
       headerIdx = r;
       colOpsId = idx;
+      colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']); // Identifica a primeira coluna
       colHub = findHeaderCol(rows[r], ['hub']);
       colNome = findHeaderCol(rows[r], ['nome completo','nome']);
       colFuncao = findHeaderCol(rows[r], ['função','funcao']);
@@ -384,6 +389,7 @@ function processSheetRows(rows, sheetName, analyst){
     if(!nome) continue;
     const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
     const hub = colHub!==-1 && row[colHub] ? row[colHub].toString().trim() : sheetName;
+    const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
     const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
     const dataEntradaRaw = colData!==-1 ? row[colData] : null;
     const dataEntrada = dataEntradaRaw ? parseDate(dataEntradaRaw) : null;
@@ -393,7 +399,7 @@ function processSheetRows(rows, sheetName, analyst){
     const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
     if(deveExcluir) continue;
     
-    records.push({ nome, hub, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
+    records.push({ nome, hub, subReg, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
   }
 }
 
@@ -422,7 +428,6 @@ function findHeaderCol(headerRow, matchers){
   return -1;
 }
 
-// Retorna se o campo Ops ID é vazio (indicando pendência)
 function isBlank(v){
   if(v === null || v === undefined) return true;
   const s = v.toString().trim();
@@ -439,12 +444,13 @@ function processWorkbook(wb){
     
     const analyst = extractAnalyst(rows);
     
-    let headerIdx = -1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1;
+    let headerIdx = -1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
     for(let r=0; r<Math.min(rows.length, 10); r++){
       const idx = findHeaderCol(rows[r], ['ops id']);
       if(idx !== -1){
         headerIdx = r;
         colOpsId = idx;
+        colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']);
         colHub = findHeaderCol(rows[r], ['hub']);
         colNome = findHeaderCol(rows[r], ['nome completo','nome']);
         colFuncao = findHeaderCol(rows[r], ['função','funcao']);
@@ -461,6 +467,7 @@ function processWorkbook(wb){
       if(!nome) continue;
       const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
       const hub = colHub!==-1 && row[colHub] ? row[colHub].toString().trim() : sheetName;
+      const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
       const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
       const dataEntradaRaw = colData!==-1 ? row[colData] : null;
       const dataEntrada = dataEntradaRaw ? parseDate(dataEntradaRaw) : null;
@@ -469,7 +476,7 @@ function processWorkbook(wb){
       const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
       if(deveExcluir) continue;
       
-      records.push({ nome, hub, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
+      records.push({ nome, hub, subReg, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
     }
   });
   render();
@@ -485,17 +492,11 @@ function daysOpen(date){
 function render(){
   const total = records.length;
   const pending = records.filter(r=>r.pendente);
-  
-  const critical = pending.filter(r => {
-    const days = daysOpen(r.dataEntrada);
-    return days !== null && days > 7;
-  }).length;
 
   const done = total - pending.length;
   const pct = total>0 ? Math.round((done/total)*100) : 0;
 
   document.getElementById('kpi-pending').textContent = pending.length;
-  document.getElementById('kpi-critical').textContent = critical;
   document.getElementById('kpi-done').textContent = done;
   document.getElementById('kpi-total').textContent = total;
   document.getElementById('kpi-pct').textContent = pct + '%';
@@ -525,7 +526,19 @@ function render(){
     </div>
   `).join('') : '<div class="empty-state">Nenhum analista com pendências! 🎉</div>';
 
-  // 3. Pendências por função
+  // 3. NOVA VISÃO: Pendências por SUB REGIONAL (extraído da coluna A)
+  const bySubReg = {};
+  pending.forEach(r=>{ bySubReg[r.subReg] = (bySubReg[r.subReg]||0) + 1; });
+  const subRegEntries = Object.entries(bySubReg).sort((a,b)=>b[1]-a[1]);
+  const subregList = document.getElementById('subreg-list');
+  subregList.innerHTML = subRegEntries.length ? subRegEntries.map(([name,count])=>`
+    <div class="compact-row subreg-row">
+      <span class="compact-name" title="${name}">${name}</span>
+      <span class="compact-count">${count}</span>
+    </div>
+  `).join('') : '<div class="empty-state">Nenhuma pendência por Sub Regional 🎉</div>';
+
+  // 4. Pendências por função
   const byFunc = {};
   pending.forEach(r=>{ byFunc[r.funcao] = (byFunc[r.funcao]||0) + 1; });
   const funcEntries = Object.entries(byFunc).sort((a,b)=>b[1]-a[1]);
