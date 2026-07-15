@@ -220,12 +220,12 @@ function gisInit(){
       callback: handleAuthResponse,
     });
     
-    // Tenta recuperar e validar o token salvo anteriormente
+    // Executa a verificação automática de sessão ao iniciar
     verificarTokenSalvo();
   }catch(e){ console.error('Erro ao iniciar gis:', e); }
 }
 
-// Restaura sessão existente caso o token armazenado ainda seja válido
+// Restaura a sessão caso exista um token armazenado válido
 async function verificarTokenSalvo() {
   const tokenSalvo = localStorage.getItem('g_oauth_token');
   const expiracaoSalva = localStorage.getItem('g_oauth_token_expires');
@@ -269,7 +269,7 @@ function handleAuthResponse(resp){
     return;
   }
   
-  // Salva o token de acesso e calcula o tempo limite de validade (padrão de 1 hora)
+  // Armazena com segurança o token recebido e calcula o tempo de expiração
   if (resp.access_token) {
     localStorage.setItem('g_oauth_token', resp.access_token);
     const expiracao = Date.now() + (Number(resp.expires_in || 3600) * 1000);
@@ -308,7 +308,7 @@ async function fetchAllSheetsFromGoogle(){
     clockText.textContent = 'Atualizado em tempo real: ' + new Date().toLocaleString('pt-BR');
   }catch(err){
     console.error(err);
-    // Se o token estiver expirado ou for revogado, limpa o armazenamento e reseta a UI
+    // Limpa tokens armazenados e expira sessão visual caso o token seja revogado ou inválido
     if (err.status === 401) {
       localStorage.removeItem('g_oauth_token');
       localStorage.removeItem('g_oauth_token_expires');
@@ -322,7 +322,6 @@ async function fetchAllSheetsFromGoogle(){
   }
 }
 
-// Processa as linhas de UMA aba (já vindas da API, sem passar pelo SheetJS) e acrescenta a `records`
 function processSheetRows(rows, sheetName){
   let headerIdx=-1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1;
   for(let r=0; r<Math.min(rows.length, 6); r++){
@@ -337,7 +336,7 @@ function processSheetRows(rows, sheetName){
       break;
     }
   }
-  if(headerIdx === -1) return; // aba sem coluna Ops ID — ignorada
+  if(headerIdx === -1) return;
 
   for(let r=headerIdx+1; r<rows.length; r++){
     const row = rows[r] || [];
@@ -391,7 +390,7 @@ function processWorkbook(wb){
   records = [];
   wb.SheetNames.forEach(sheetName => {
     const sheetLower = sheetName.toLowerCase();
-    if(BLOCKED_SHEET_KEYWORDS.some(k => sheetLower.includes(k))) return; // aba de consolidado/resumo, ignorada
+    if(BLOCKED_SHEET_KEYWORDS.some(k => sheetLower.includes(k))) return;
     const ws = wb.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
     let headerIdx = -1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1;
@@ -407,7 +406,7 @@ function processWorkbook(wb){
         break;
       }
     }
-    if(headerIdx === -1) return; // aba sem coluna Ops ID (ex: Summary) — ignorada
+    if(headerIdx === -1) return;
 
     for(let r=headerIdx+1; r<rows.length; r++){
       const row = rows[r];
@@ -420,7 +419,7 @@ function processWorkbook(wb){
       const dataEntradaRaw = colData!==-1 ? row[colData] : null;
       const dataEntrada = dataEntradaRaw ? parseDate(dataEntradaRaw) : null;
       const funcaoNorm = funcao.trim().toLowerCase();
-      if(EXCLUDED_ROLES.includes(funcaoNorm)) continue; // cargos de referência, não entram na contagem
+      if(EXCLUDED_ROLES.includes(funcaoNorm)) continue;
       if(EXCLUDED_ROLE_PREFIXES.some(prefix => funcaoNorm.startsWith(prefix))) continue;
       records.push({
         nome, hub, funcao,
