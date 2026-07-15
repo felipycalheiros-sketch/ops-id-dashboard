@@ -194,7 +194,6 @@
   </div>
 
   <div class="footer-zone">
-    <!-- Importação Manual no rodapé -->
     <div class="upload-zone" id="dropzone">
       <label for="file-input">Arraste um arquivo aqui ou <span>selecione o Excel local</span> se preferir carregar manualmente.</label>
       <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
@@ -203,7 +202,7 @@
     
     <div class="footer-notes">
       <strong>Notas de filtragem e segurança:</strong><br>
-      • Os cargos "Regional", "Sub Regional" e "Site Leader" são excluídos automaticamente da contagem.<br>
+      • Os cargos que contêm "Regional", "Sub Regional" ou "Site Leader" são excluídos automaticamente da contagem.<br>
       • Abas que contenham no título palavras-chave como "Query", "Consolidado", "Summary", "Modelo" e "Base" são ignoradas para evitar duplicidade de registros.<br>
       • Os nomes dos analistas são extraídos diretamente do campo "PTS Regional: [Nome]" localizado na primeira linha de cada aba.
     </div>
@@ -222,8 +221,7 @@ let tokenClient;
 let records = [];
 let isGapiLoaded = false;
 let isGisLoaded = false;
-const EXCLUDED_ROLES = ['regional','sub regional'];
-const EXCLUDED_ROLE_PREFIXES = ['site leader'];
+const EXCLUDED_KEYWORDS = ['site leader', 'regional', 'sub regional'];
 const BLOCKED_SHEET_KEYWORDS = ['query','consolidado','summary','modelo','cargos','base nomes','duplicar'];
 
 window.addEventListener('load', () => {
@@ -309,7 +307,6 @@ function handleAuthResponse(resp){
   fetchAllSheetsFromGoogle();
 }
 
-// Extrai o nome do analista a partir de textos como "PTS Regional: (Paula Alberto)" ou "PTS Regional: Paula"
 function extractAnalyst(rows){
   for(let r=0; r<Math.min(rows.length, 3); r++){
     const row = rows[r] || [];
@@ -317,7 +314,7 @@ function extractAnalyst(rows){
       const val = (row[c] || '').toString().trim();
       if(val.toLowerCase().includes('pts regional')){
         let name = val.replace(/pts regional[:\s\-]+/i, '');
-        name = name.replace(/[\(\)\[\]]/g, '').trim(); // remove parênteses
+        name = name.replace(/[\(\)\[\]]/g, '').trim();
         if(name) return name;
       }
     }
@@ -390,10 +387,11 @@ function processSheetRows(rows, sheetName, analyst){
     const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
     const dataEntradaRaw = colData!==-1 ? row[colData] : null;
     const dataEntrada = dataEntradaRaw ? parseDate(dataEntradaRaw) : null;
-    const funcaoNorm = funcao.trim().toLowerCase();
     
-    if(EXCLUDED_ROLES.includes(funcaoNorm)) continue;
-    if(EXCLUDED_ROLE_PREFIXES.some(prefix => funcaoNorm.startsWith(prefix))) continue;
+    // Filtro de exclusão por palavra-chave parcial (evita Site Leader, Regional, etc.)
+    const funcaoNorm = funcao.trim().toLowerCase();
+    const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
+    if(deveExcluir) continue;
     
     records.push({ nome, hub, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
   }
@@ -465,10 +463,10 @@ function processWorkbook(wb){
       const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
       const dataEntradaRaw = colData!==-1 ? row[colData] : null;
       const dataEntrada = dataEntradaRaw ? parseDate(dataEntradaRaw) : null;
-      const funcaoNorm = funcao.trim().toLowerCase();
       
-      if(EXCLUDED_ROLES.includes(funcaoNorm)) continue;
-      if(EXCLUDED_ROLE_PREFIXES.some(prefix => funcaoNorm.startsWith(prefix))) continue;
+      const funcaoNorm = funcao.trim().toLowerCase();
+      const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
+      if(deveExcluir) continue;
       
       records.push({ nome, hub, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
     }
@@ -487,7 +485,6 @@ function render(){
   const total = records.length;
   const pending = records.filter(r=>r.pendente);
   
-  // Calcula pendências críticas (> 7 dias)
   const critical = pending.filter(r => {
     const days = daysOpen(r.dataEntrada);
     return days !== null && days > 7;
@@ -515,7 +512,7 @@ function render(){
       <div class="track"><div class="track-fill" style="width:${(count/maxUnit*100).toFixed(0)}%"></div></div>
     </div>`).join('') : '<div class="empty-state">Nenhuma pendência 🎉</div>';
 
-  // 2. Pendências por ANALISTA (NOVO INDICADOR)
+  // 2. Pendências por ANALISTA
   const byAnalyst = {};
   pending.forEach(r=>{ byAnalyst[r.analyst] = (byAnalyst[r.analyst]||0) + 1; });
   const analystEntries = Object.entries(byAnalyst).sort((a,b)=>b[1]-a[1]);
@@ -536,7 +533,6 @@ function render(){
     <div class="compact-row"><span class="compact-name" title="${name}">${name}</span><span class="compact-count">${count}</span></div>
   `).join('') : '<div class="empty-state">Nenhuma pendência 🎉</div>';
 
-  // Atualiza os seletores de filtros
   const unitFilter = document.getElementById('unit-filter');
   const currentUnitVal = unitFilter.value;
   unitFilter.innerHTML = '<option value="">Todas as unidades</option>' +
