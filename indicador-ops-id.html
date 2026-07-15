@@ -53,7 +53,6 @@
   #dashboard{display:none;}
   #dashboard.show{display:block;}
 
-  /* Ajustado para 4 colunas (sem KPI Críticos) */
   .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
   @media (max-width:1000px){ .kpi-row{grid-template-columns:repeat(2,1fr);} }
   .kpi{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 16px;position:relative;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,0.01);}
@@ -68,7 +67,6 @@
   .kpi.done .value{color:var(--done);}
   .kpi.pct .value{color:var(--warn);}
 
-  /* Ajustado para 4 colunas para acomodar Sub Regional */
   .grid-4{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;}
   @media (max-width:1100px){ .grid-4{grid-template-columns:1fr 1fr;} }
   @media (max-width:650px){ .grid-4{grid-template-columns:1fr;} }
@@ -107,10 +105,9 @@
   .aging-ok .aging-dot{background:var(--done);box-shadow:0 0 0 3px var(--done-dim);}
   .days-cell{font-family:var(--mono);font-weight:600;}
   .tag{font-family:var(--mono);font-size:10px;color:var(--text-dim);background:var(--surface-2);padding:1px 5px;border-radius:3px;font-weight:600;}
-  .analyst-tag{background:var(--warn-dim);color:var(--warn);border:1px solid rgba(217,119,6,0.15);}
+  .subreg-tag{background:var(--surface-2);color:var(--text);border:1px solid var(--line);}
   .empty-state{text-align:center;padding:30px 10px;color:var(--text-faint);font-size:12px;}
   
-  /* Upload e Notas no Rodapé */
   .footer-zone{margin-top:24px;border-top:1px solid var(--line);padding-top:16px;}
   .upload-zone{border:1px dashed var(--line);border-radius:6px;padding:10px;text-align:center;background:var(--surface);margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:11px;box-shadow:0 1px 2px rgba(0,0,0,0.01);transition: border-color 0.15s;}
   .upload-zone.drag{border-color:var(--pending);background:var(--pending-dim);}
@@ -184,7 +181,7 @@
       </div>
       <table>
         <thead>
-          <tr><th>Prioridade</th><th>Nome completo</th><th>Unidade</th><th>Analista</th><th>Função</th><th>Data de entrada</th><th>Dias abertos</th></tr>
+          <tr><th>Prioridade</th><th>Nome completo</th><th>Unidade</th><th>Sub Regional</th><th>Função</th><th>Data de entrada</th><th>Dias abertos</th></tr>
         </thead>
         <tbody id="queue-body"></tbody>
       </table>
@@ -372,7 +369,7 @@ function processSheetRows(rows, sheetName, analyst){
     if(idx !== -1){
       headerIdx = r;
       colOpsId = idx;
-      colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']); // Identifica a primeira coluna
+      colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']); 
       colHub = findHeaderCol(rows[r], ['hub']);
       colNome = findHeaderCol(rows[r], ['nome completo','nome']);
       colFuncao = findHeaderCol(rows[r], ['função','funcao']);
@@ -394,7 +391,6 @@ function processSheetRows(rows, sheetName, analyst){
     const dataEntradaRaw = colData!==-1 ? row[colData] : null;
     const dataEntrada = dataEntradaRaw ? parseDate(dataEntradaRaw) : null;
     
-    // Filtro de exclusão parcial que desconsidera automaticamente cargos específicos
     const funcaoNorm = funcao.trim().toLowerCase();
     const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
     if(deveExcluir) continue;
@@ -526,7 +522,7 @@ function render(){
     </div>
   `).join('') : '<div class="empty-state">Nenhum analista com pendências! 🎉</div>';
 
-  // 3. NOVA VISÃO: Pendências por SUB REGIONAL (extraído da coluna A)
+  // 3. Pendências por SUB REGIONAL
   const bySubReg = {};
   pending.forEach(r=>{ bySubReg[r.subReg] = (bySubReg[r.subReg]||0) + 1; });
   const subRegEntries = Object.entries(bySubReg).sort((a,b)=>b[1]-a[1]);
@@ -596,7 +592,7 @@ function renderQueue(){
       <td><span class="aging-dot"></span></td>
       <td>${r.nome}</td>
       <td><span class="tag">${r.hub}</span></td>
-      <td><span class="tag analyst-tag">${r.analyst}</span></td>
+      <td><span class="tag subreg-tag">${r.subReg}</span></td>
       <td>${r.funcao}</td>
       <td>${dateStr}</td>
       <td class="days-cell">${daysStr}</td>
