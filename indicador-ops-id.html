@@ -219,7 +219,36 @@ function gisInit(){
       scope: SCOPES,
       callback: handleAuthResponse,
     });
+    
+    // Tenta recuperar e validar o token salvo anteriormente
+    verificarTokenSalvo();
   }catch(e){ console.error('Erro ao iniciar gis:', e); }
+}
+
+// Restaura sessão existente caso o token armazenado ainda seja válido
+async function verificarTokenSalvo() {
+  const tokenSalvo = localStorage.getItem('g_oauth_token');
+  const expiracaoSalva = localStorage.getItem('g_oauth_token_expires');
+  
+  if (tokenSalvo && expiracaoSalva && Date.now() < Number(expiracaoSalva)) {
+    gapi.client.setToken({ access_token: tokenSalvo });
+    definirInterfaceConectado();
+    fetchAllSheetsFromGoogle();
+  }
+}
+
+function definirInterfaceConectado() {
+  const btn = document.getElementById('btn-login');
+  btn.className = 'btn-google connected';
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Sincronizado`;
+  document.getElementById('connection-status').textContent = 'Conectado — buscando todas as abas de unidade...';
+}
+
+function definirInterfaceDesconectado() {
+  const btn = document.getElementById('btn-login');
+  btn.className = 'btn-google';
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M21.35 11.1H12v2.7h5.38c-.23 1.22-.92 2.25-1.95 2.94v2.44h3.15c1.84-1.7 2.9-4.2 2.9-7.18 0-.54-.05-1.07-.13-1.6z"/><path d="M12 20.6c2.43 0 4.47-.8 5.96-2.2l-3.15-2.44c-.87.58-1.99.94-2.81.94-2.16 0-4-1.46-4.66-3.42H4.1v2.53C5.6 18.4 8.54 20.6 12 20.6z" fill="#34A853"/><path d="M7.34 13.48c-.17-.5-.26-1.03-.26-1.58s.09-1.08.26-1.58V7.79H4.1c-.6 1.2-1 2.56-1 4.01s.4 2.81 1 4.01l3.24-2.53z" fill="#FBBC05"/><path d="M12 7.1c1.32 0 2.5.45 3.44 1.35l2.58-2.58C16.46 4.34 14.43 3.4 12 3.4 8.54 3.4 5.6 5.6 4.1 8.59l3.24 2.53c.66-1.96 2.5-3.42 4.66-3.42z" fill="#EA4335"/></svg> Conectar com Google`;
+  document.getElementById('connection-status').textContent = 'Entre com sua conta Google para carregar a planilha automaticamente.';
 }
 
 document.getElementById('btn-login').addEventListener('click', () => {
@@ -239,10 +268,15 @@ function handleAuthResponse(resp){
     alert('Erro de autenticação: ' + resp.error);
     return;
   }
-  const btn = document.getElementById('btn-login');
-  btn.className = 'btn-google connected';
-  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Sincronizado`;
-  document.getElementById('connection-status').textContent = 'Conectado — buscando todas as abas de unidade...';
+  
+  // Salva o token de acesso e calcula o tempo limite de validade (padrão de 1 hora)
+  if (resp.access_token) {
+    localStorage.setItem('g_oauth_token', resp.access_token);
+    const expiracao = Date.now() + (Number(resp.expires_in || 3600) * 1000);
+    localStorage.setItem('g_oauth_token_expires', expiracao);
+  }
+
+  definirInterfaceConectado();
   fetchAllSheetsFromGoogle();
 }
 
@@ -274,9 +308,17 @@ async function fetchAllSheetsFromGoogle(){
     clockText.textContent = 'Atualizado em tempo real: ' + new Date().toLocaleString('pt-BR');
   }catch(err){
     console.error(err);
-    alert('Erro ao ler a planilha: ' + (err.result?.error?.message || err.message || 'verifique o acesso à planilha.'));
-    clockText.textContent = 'Erro ao sincronizar';
-    document.getElementById('connection-status').textContent = 'Falha na sincronização — tente a importação manual abaixo.';
+    // Se o token estiver expirado ou for revogado, limpa o armazenamento e reseta a UI
+    if (err.status === 401) {
+      localStorage.removeItem('g_oauth_token');
+      localStorage.removeItem('g_oauth_token_expires');
+      definirInterfaceDesconectado();
+      clockText.textContent = 'Sessão expirada. Reconecte.';
+    } else {
+      alert('Erro ao ler a planilha: ' + (err.result?.error?.message || err.message || 'verifique o acesso à planilha.'));
+      clockText.textContent = 'Erro ao sincronizar';
+      document.getElementById('connection-status').textContent = 'Falha na sincronização — tente a importação manual abaixo.';
+    }
   }
 }
 
