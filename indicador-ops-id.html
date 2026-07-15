@@ -221,7 +221,7 @@ let tokenClient;
 let records = [];
 let isGapiLoaded = false;
 let isGisLoaded = false;
-const EXCLUDED_KEYWORDS = ['site leader', 'regional', 'sub regional'];
+const EXCLUDED_KEYWORDS = ['site leader', 'regional', 'sub regional']; // Site Leader restaurado com sucesso
 const BLOCKED_SHEET_KEYWORDS = ['query','consolidado','summary','modelo','cargos','base nomes','duplicar'];
 
 window.addEventListener('load', () => {
@@ -388,7 +388,7 @@ function processSheetRows(rows, sheetName, analyst){
     const dataEntradaRaw = colData!==-1 ? row[colData] : null;
     const dataEntrada = dataEntradaRaw ? parseDate(dataEntradaRaw) : null;
     
-    // Filtro de exclusão por palavra-chave parcial (evita Site Leader, Regional, etc.)
+    // Filtro de exclusão parcial que desconsidera automaticamente cargos específicos
     const funcaoNorm = funcao.trim().toLowerCase();
     const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
     if(deveExcluir) continue;
@@ -422,6 +422,7 @@ function findHeaderCol(headerRow, matchers){
   return -1;
 }
 
+// Retorna se o campo Ops ID é vazio (indicando pendência)
 function isBlank(v){
   if(v === null || v === undefined) return true;
   const s = v.toString().trim();
