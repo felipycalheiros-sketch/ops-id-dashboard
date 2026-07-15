@@ -172,7 +172,7 @@
 
     <div class="panel">
       <div class="queue-head">
-        <h2 style="margin:0; border:none; padding:0;">Pendências por Operador</h2>
+        <h2 style="margin:0; border:none; padding:0;">Fila de tratamento e criação</h2>
         <div class="queue-controls">
           <input type="text" id="search" placeholder="Buscar por nome...">
           <select id="analyst-filter"><option value="">Todos os analistas</option></select>
@@ -570,7 +570,27 @@ function renderQueue(){
   if(analystFilter) list = list.filter(r=>r.analyst === analystFilter);
 
   list = list.map(r=>({...r, days: daysOpen(r.dataEntrada)}));
-  list.sort((a,b)=> (b.days ?? -1) - (a.days ?? -1));
+  
+  // Ordenação personalizada solicitada
+  list.sort((a, b) => {
+    // 1. Deixar valores que contêm a sub-regional em branco (como '—' ou vazio) por último
+    const aSubRegVazia = (!a.subReg || a.subReg.trim() === '' || a.subReg === '—');
+    const bSubRegVazia = (!b.subReg || b.subReg.trim() === '' || b.subReg === '—');
+    
+    if (aSubRegVazia && !bSubRegVazia) return 1;
+    if (!aSubRegVazia && bSubRegVazia) return -1;
+
+    // 2. Classificar por Unidade (hub) em ordem alfabética
+    const compUnidade = (a.hub || '').localeCompare(b.hub || '', 'pt-BR');
+    if (compUnidade !== 0) return compUnidade;
+
+    // 3. Classificar por Analista em ordem alfabética
+    const compAnalista = (a.analyst || '').localeCompare(b.analyst || '', 'pt-BR');
+    if (compAnalista !== 0) return compAnalista;
+
+    // 4. Classificar por Sub regional (subReg) em ordem alfabética
+    return (a.subReg || '').localeCompare(b.subReg || '', 'pt-BR');
+  });
 
   const body = document.getElementById('queue-body');
   const emptyState = document.getElementById('empty-state');
