@@ -120,6 +120,16 @@
   .legend{display:flex;gap:14px;margin-top:10px;font-size:10px;color:var(--text-dim);flex-wrap:wrap;border-top:1px solid var(--line);padding-top:8px;}
   .legend span{display:inline-flex;align-items:center;gap:4px;}
   .legend .aging-dot{margin-right:0;}
+
+  /* ---- Pendências por analista com detalhamento por unidade ---- */
+  .analyst-group{padding:10px 0;border-bottom:1px solid var(--line);}
+  .analyst-group:last-child{border-bottom:none;}
+  .analyst-group-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;}
+  .analyst-group-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .analyst-group-count{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--pending);background:var(--pending-dim);border-radius:10px;padding:1px 8px;flex-shrink:0;}
+  .analyst-unit-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0 3px 9px;font-size:11px;color:var(--text-dim);border-left:2px solid var(--line);margin-left:2px;}
+  .analyst-unit-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .analyst-unit-count{font-family:var(--mono);font-weight:700;color:var(--pending);flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -153,12 +163,12 @@
 
     <div class="grid-4">
       <div class="panel">
-        <h2>Pendências por Analista</h2>
-        <div id="analyst-list"></div>
-      </div>
-      <div class="panel">
         <h2>Pendências por unidade</h2>
         <div id="unit-list"></div>
+      </div>
+      <div class="panel">
+        <h2>Pendências por Analista</h2>
+        <div id="analyst-list"></div>
       </div>
       <div class="panel">
         <h2>Pendências por Sub Regional</h2>
@@ -506,15 +516,29 @@ function render(){
       <div class="track"><div class="track-fill" style="width:${(count/maxUnit*100).toFixed(0)}%"></div></div>
     </div>`).join('') : '<div class="empty-state">Nenhuma pendência 🎉</div>';
 
-  // 2. Pendências por ANALISTA
-  const byAnalyst = {};
-  pending.forEach(r=>{ byAnalyst[r.analyst] = (byAnalyst[r.analyst]||0) + 1; });
-  const analystEntries = Object.entries(byAnalyst).sort((a,b)=>b[1]-a[1]);
+  // 2. Pendências por ANALISTA (com detalhamento por unidade)
+  const byAnalystUnit = {};
+  pending.forEach(r=>{
+    if(!byAnalystUnit[r.analyst]) byAnalystUnit[r.analyst] = {};
+    byAnalystUnit[r.analyst][r.hub] = (byAnalystUnit[r.analyst][r.hub]||0) + 1;
+  });
+  const analystGroups = Object.entries(byAnalystUnit).map(([name, units])=>{
+    const unitEntries = Object.entries(units).sort((a,b)=>b[1]-a[1]);
+    const total = unitEntries.reduce((sum,[,c])=>sum+c, 0);
+    return {name, total, unitEntries};
+  }).sort((a,b)=> b.total - a.total);
   const analystList = document.getElementById('analyst-list');
-  analystList.innerHTML = analystEntries.length ? analystEntries.map(([name,count])=>`
-    <div class="compact-row analyst-row">
-      <span class="compact-name" title="${name}">${name}</span>
-      <span class="compact-count">${count}</span>
+  analystList.innerHTML = analystGroups.length ? analystGroups.map(a=>`
+    <div class="analyst-group">
+      <div class="analyst-group-head">
+        <span class="analyst-group-name" title="${a.name}">${a.name}</span>
+        <span class="analyst-group-count">${a.total}</span>
+      </div>
+      ${a.unitEntries.map(([unit,count])=>`
+        <div class="analyst-unit-row">
+          <span class="analyst-unit-name" title="${unit}">${unit}</span>
+          <span class="analyst-unit-count">${count}</span>
+        </div>`).join('')}
     </div>
   `).join('') : '<div class="empty-state">Nenhum analista com pendências! 🎉</div>';
 
