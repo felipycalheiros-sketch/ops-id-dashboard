@@ -67,7 +67,8 @@
   .kpi.done .value{color:var(--done);}
   .kpi.pct .value{color:var(--warn);}
 
-  .grid-4{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+  .grid-4{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;}
+  @media (max-width:1000px){ .grid-4{grid-template-columns:1fr 1fr;} }
   @media (max-width:650px){ .grid-4{grid-template-columns:1fr;} }
   .panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,0.01);}
   .panel h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin:0 0 10px;font-weight:700;border-bottom:1px solid var(--line);padding-bottom:6px;}
@@ -119,24 +120,6 @@
   .legend{display:flex;gap:14px;margin-top:10px;font-size:10px;color:var(--text-dim);flex-wrap:wrap;border-top:1px solid var(--line);padding-top:8px;}
   .legend span{display:inline-flex;align-items:center;gap:4px;}
   .legend .aging-dot{margin-right:0;}
-
-  /* ---- Visão por analista ---- */
-  .analyst-list-wrap{display:flex;flex-direction:column;gap:10px;}
-  .analyst-card{border:1px solid var(--line);border-radius:6px;background:var(--surface);overflow:hidden;}
-  .analyst-card[open]{box-shadow:0 1px 3px rgba(0,0,0,0.04);}
-  .analyst-card summary{list-style:none;cursor:pointer;padding:10px 14px;display:flex;align-items:center;gap:10px;user-select:none;}
-  .analyst-card summary::-webkit-details-marker{display:none;}
-  .analyst-chevron{width:8px;height:8px;border-right:2px solid var(--text-faint);border-bottom:2px solid var(--text-faint);transform:rotate(-45deg);transition:transform .15s;flex-shrink:0;}
-  .analyst-card[open] .analyst-chevron{transform:rotate(45deg);}
-  .analyst-avatar{width:26px;height:26px;border-radius:50%;background:var(--pending-dim);color:var(--pending);font-family:var(--mono);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .analyst-name{font-size:13px;font-weight:700;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .analyst-meta{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-  .analyst-count{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--pending);background:var(--pending-dim);border-radius:10px;padding:2px 9px;}
-  .analyst-critical-flag{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--warn);background:var(--warn-dim);border-radius:10px;padding:2px 7px;letter-spacing:.02em;}
-  .analyst-body{border-top:1px solid var(--line);padding:4px 14px 10px;}
-  .analyst-body table{margin-top:4px;}
-  .analyst-body thead th{background:transparent;border-bottom:1px solid var(--line);}
-  .analyst-empty{padding:16px;text-align:center;color:var(--text-faint);font-size:12px;}
 </style>
 </head>
 <body>
@@ -170,6 +153,10 @@
 
     <div class="grid-4">
       <div class="panel">
+        <h2>Pendências por Analista</h2>
+        <div id="analyst-list"></div>
+      </div>
+      <div class="panel">
         <h2>Pendências por unidade</h2>
         <div id="unit-list"></div>
       </div>
@@ -181,13 +168,19 @@
 
     <div class="panel">
       <div class="queue-head">
-        <h2 style="margin:0; border:none; padding:0;">Visão por analista — fila de tratamento e criação</h2>
+        <h2 style="margin:0; border:none; padding:0;">Fila de tratamento e criação</h2>
         <div class="queue-controls">
           <input type="text" id="search" placeholder="Buscar por nome...">
+          <select id="analyst-filter"><option value="">Todos os analistas</option></select>
           <select id="unit-filter"><option value="">Todas as unidades</option></select>
         </div>
       </div>
-      <div id="analyst-queue" class="analyst-list-wrap"></div>
+      <table>
+        <thead>
+          <tr><th>Prioridade</th><th>Nome completo</th><th>Unidade</th><th>Sub Regional</th><th>Função</th><th>Data de entrada</th><th>Dias abertos</th></tr>
+        </thead>
+        <tbody id="queue-body"></tbody>
+      </table>
       <div id="empty-state" class="empty-state" style="display:none;">Nenhum registro pendente encontrado.</div>
       <div class="legend">
         <span><span class="aging-dot" style="background:var(--pending)"></span> Mais de 7 dias (Crítico)</span>
@@ -513,7 +506,19 @@ function render(){
       <div class="track"><div class="track-fill" style="width:${(count/maxUnit*100).toFixed(0)}%"></div></div>
     </div>`).join('') : '<div class="empty-state">Nenhuma pendência 🎉</div>';
 
-  // 2. Pendências por SUB REGIONAL
+  // 2. Pendências por ANALISTA
+  const byAnalyst = {};
+  pending.forEach(r=>{ byAnalyst[r.analyst] = (byAnalyst[r.analyst]||0) + 1; });
+  const analystEntries = Object.entries(byAnalyst).sort((a,b)=>b[1]-a[1]);
+  const analystList = document.getElementById('analyst-list');
+  analystList.innerHTML = analystEntries.length ? analystEntries.map(([name,count])=>`
+    <div class="compact-row analyst-row">
+      <span class="compact-name" title="${name}">${name}</span>
+      <span class="compact-count">${count}</span>
+    </div>
+  `).join('') : '<div class="empty-state">Nenhum analista com pendências! 🎉</div>';
+
+  // 3. Pendências por SUB REGIONAL
   const bySubReg = {};
   pending.forEach(r=>{ bySubReg[r.subReg] = (bySubReg[r.subReg]||0) + 1; });
   const subRegEntries = Object.entries(bySubReg).sort((a,b)=>b[1]-a[1]);
@@ -531,88 +536,60 @@ function render(){
     [...new Set(pending.map(r=>r.hub))].sort().map(u=>`<option value="${u}">${u}</option>`).join('');
   unitFilter.value = currentUnitVal;
 
+  const analystFilter = document.getElementById('analyst-filter');
+  const currentAnalystVal = analystFilter.value;
+  analystFilter.innerHTML = '<option value="">Todos os analistas</option>' +
+    [...new Set(pending.map(r=>r.analyst))].sort().map(a=>`<option value="${a}">${a}</option>`).join('');
+  analystFilter.value = currentAnalystVal;
+
   renderQueue();
-}
-
-function initials(name){
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if(parts.length === 0) return '?';
-  if(parts.length === 1) return parts[0].slice(0,2).toUpperCase();
-  return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
-}
-
-function rowHtml(r){
-  let cls = 'aging-ok';
-  if(r.days === null) cls = 'aging-ok';
-  else if(r.days > 7) cls = 'aging-critical';
-  else if(r.days >= 3) cls = 'aging-warn';
-  const dateStr = r.dataEntrada ? r.dataEntrada.toLocaleDateString('pt-BR') : '—';
-  const daysStr = r.days !== null ? r.days + ' dias' : '—';
-  return `<tr class="${cls}">
-    <td><span class="aging-dot"></span></td>
-    <td>${r.nome}</td>
-    <td><span class="tag">${r.hub}</span></td>
-    <td><span class="tag subreg-tag">${r.subReg}</span></td>
-    <td>${r.funcao}</td>
-    <td>${dateStr}</td>
-    <td class="days-cell">${daysStr}</td>
-  </tr>`;
 }
 
 function renderQueue(){
   const search = document.getElementById('search').value.trim().toLowerCase();
   const unitFilter = document.getElementById('unit-filter').value;
+  const analystFilter = document.getElementById('analyst-filter').value;
 
   let list = records.filter(r=>r.pendente);
 
   if(search) list = list.filter(r=>r.nome.toLowerCase().includes(search));
   if(unitFilter) list = list.filter(r=>r.hub === unitFilter);
+  if(analystFilter) list = list.filter(r=>r.analyst === analystFilter);
 
   list = list.map(r=>({...r, days: daysOpen(r.dataEntrada)}));
+  list.sort((a,b)=> (b.days ?? -1) - (a.days ?? -1));
 
-  const container = document.getElementById('analyst-queue');
+  const body = document.getElementById('queue-body');
   const emptyState = document.getElementById('empty-state');
-
   if(list.length === 0){
-    container.innerHTML = '';
+    body.innerHTML = '';
     emptyState.style.display = 'block';
     return;
   }
   emptyState.style.display = 'none';
 
-  const byAnalyst = {};
-  list.forEach(r=>{ (byAnalyst[r.analyst] = byAnalyst[r.analyst] || []).push(r); });
-
-  const analystEntries = Object.entries(byAnalyst).sort((a,b)=> b[1].length - a[1].length);
-
-  container.innerHTML = analystEntries.map(([name, rows])=>{
-    rows.sort((a,b)=> (b.days ?? -1) - (a.days ?? -1));
-    const criticalCount = rows.filter(r=> r.days !== null && r.days > 7).length;
-    return `
-    <details class="analyst-card" open>
-      <summary>
-        <span class="analyst-chevron"></span>
-        <span class="analyst-avatar">${initials(name)}</span>
-        <span class="analyst-name" title="${name}">${name}</span>
-        <span class="analyst-meta">
-          ${criticalCount > 0 ? `<span class="analyst-critical-flag">${criticalCount} crítico${criticalCount>1?'s':''}</span>` : ''}
-          <span class="analyst-count">${rows.length} pendente${rows.length>1?'s':''}</span>
-        </span>
-      </summary>
-      <div class="analyst-body">
-        <table>
-          <thead>
-            <tr><th>Prioridade</th><th>Nome completo</th><th>Unidade</th><th>Sub Regional</th><th>Função</th><th>Data de entrada</th><th>Dias abertos</th></tr>
-          </thead>
-          <tbody>${rows.map(rowHtml).join('')}</tbody>
-        </table>
-      </div>
-    </details>`;
+  body.innerHTML = list.map(r=>{
+    let cls = 'aging-ok';
+    if(r.days === null) cls = 'aging-ok';
+    else if(r.days > 7) cls = 'aging-critical';
+    else if(r.days >= 3) cls = 'aging-warn';
+    const dateStr = r.dataEntrada ? r.dataEntrada.toLocaleDateString('pt-BR') : '—';
+    const daysStr = r.days !== null ? r.days + ' dias' : '—';
+    return `<tr class="${cls}">
+      <td><span class="aging-dot"></span></td>
+      <td>${r.nome}</td>
+      <td><span class="tag">${r.hub}</span></td>
+      <td><span class="tag subreg-tag">${r.subReg}</span></td>
+      <td>${r.funcao}</td>
+      <td>${dateStr}</td>
+      <td class="days-cell">${daysStr}</td>
+    </tr>`;
   }).join('');
 }
 
 document.getElementById('search').addEventListener('input', renderQueue);
 document.getElementById('unit-filter').addEventListener('change', renderQueue);
+document.getElementById('analyst-filter').addEventListener('change', renderQueue);
 
 const fileInput = document.getElementById('file-input');
 const dropzone = document.getElementById('dropzone');
