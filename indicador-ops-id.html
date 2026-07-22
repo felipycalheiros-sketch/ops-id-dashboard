@@ -467,7 +467,7 @@ function processSheetRows(rows, sheetName, analyst){
     const nome = colNome!==-1 ? (row[colNome]||'').toString().trim() : '';
     if(!nome) continue;
     const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
-    const hub = colHub!==-1 && row[colHub] ? row[colHub].toString().trim() : sheetName;
+    const hub = row[colHub] ? row[colHub].toString().trim() : '—'; // sempre a partir da coluna B, sem cair no nome da aba
     const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
     const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
     const dataEntradaRaw = colData!==-1 ? row[colData] : null;
@@ -544,7 +544,7 @@ function processWorkbook(wb){
       const nome = colNome!==-1 ? (row[colNome]||'').toString().trim() : '';
       if(!nome) continue;
       const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
-      const hub = colHub!==-1 && row[colHub] ? row[colHub].toString().trim() : sheetName;
+      const hub = row[colHub] ? row[colHub].toString().trim() : '—'; // sempre a partir da coluna B, sem cair no nome da aba
       const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
       const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
       const dataEntradaRaw = colData!==-1 ? row[colData] : null;
