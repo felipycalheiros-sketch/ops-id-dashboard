@@ -452,7 +452,7 @@ function processSheetRows(rows, sheetName, analyst){
       headerIdx = r;
       colOpsId = idx;
       colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']); 
-      colHub = findHeaderCol(rows[r], ['hub']);
+      colHub = 1; // Coluna B contém a informação do Hub
       colNome = findHeaderCol(rows[r], ['nome completo','nome']);
       colFuncao = findHeaderCol(rows[r], ['função','funcao']);
       colData = findHeaderCol(rows[r], ['data de entrada','data admiss']);
@@ -529,7 +529,7 @@ function processWorkbook(wb){
         headerIdx = r;
         colOpsId = idx;
         colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']);
-        colHub = findHeaderCol(rows[r], ['hub']);
+        colHub = 1; // Coluna B contém a informação do Hub
         colNome = findHeaderCol(rows[r], ['nome completo','nome']);
         colFuncao = findHeaderCol(rows[r], ['função','funcao']);
         colData = findHeaderCol(rows[r], ['data de entrada','data admiss']);
