@@ -278,8 +278,8 @@
 
   <div class="footer-zone">
     <div class="upload-zone" id="dropzone">
-      <label for="file-input">Arraste um arquivo aqui ou <span>selecione o Excel local</span> se preferir carregar manualmente.</label>
-      <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+      <label for="file-input">Arraste os arquivos aqui (Regional MG e Regional CO/N) ou <span>selecione os Excel locais</span> se preferir carregar manualmente.</label>
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv" multiple>
       <div class="filename" id="filename"></div>
     </div>
     
@@ -513,7 +513,6 @@ function isBlank(v){
 }
 
 function processWorkbook(wb){
-  records = [];
   wb.SheetNames.forEach(sheetName => {
     const sheetLower = sheetName.toLowerCase();
     if(BLOCKED_SHEET_KEYWORDS.some(k => sheetLower.includes(k))) return;
@@ -557,7 +556,6 @@ function processWorkbook(wb){
       records.push({ nome, hub, subReg, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
     }
   });
-  render();
 }
 
 function daysOpen(date){
@@ -694,26 +692,33 @@ document.getElementById('analyst-filter').addEventListener('change', renderQueue
 const fileInput = document.getElementById('file-input');
 const dropzone = document.getElementById('dropzone');
 
-function handleFile(file){
-  if(!file) return;
-  document.getElementById('filename').textContent = 'Arquivo local ativo: ' + file.name;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const data = new Uint8Array(e.target.result);
+async function handleFiles(fileList){
+  const files = Array.from(fileList || []).filter(Boolean);
+  if(!files.length) return;
+
+  records = [];
+  const names = [];
+
+  for(const file of files){
+    const buffer = await file.arrayBuffer();
+    const data = new Uint8Array(buffer);
     const wb = XLSX.read(data, {type:'array', cellDates:true});
     processWorkbook(wb);
-    document.getElementById('dashboard').classList.add('show');
-    const clock = document.getElementById('clock');
-    clock.classList.add('live');
-    document.getElementById('clock-text').textContent = 'Atualizado localmente ' + new Date().toLocaleTimeString('pt-BR');
-  };
-  reader.readAsArrayBuffer(file);
+    names.push(file.name);
+  }
+
+  document.getElementById('filename').textContent = 'Arquivos ativos: ' + names.join(' + ');
+  render();
+  document.getElementById('dashboard').classList.add('show');
+  const clock = document.getElementById('clock');
+  clock.classList.add('live');
+  document.getElementById('clock-text').textContent = 'Atualizado localmente ' + new Date().toLocaleTimeString('pt-BR');
 }
 
-fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 ['dragover','dragenter'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
 ['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
-dropzone.addEventListener('drop', e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
+dropzone.addEventListener('drop', e => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
 </script>
 </body>
 </html>
