@@ -107,7 +107,6 @@
   .kpi.done .value{color:var(--done);}
   .kpi.pct .value{color:var(--warn);}
 
-  /* ---- ESTILOS DAS ABAS REGIONAIS ---- */
   .panel-header-with-tabs { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 12px; }
   .panel-header-with-tabs h2 { border-bottom: none !important; padding-bottom: 0 !important; margin: 0 !important; }
   .regional-tabs { display: flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 2px; gap: 2px; }
@@ -134,7 +133,6 @@
   .compact-row:last-child{border-bottom:none;}
   .compact-name{color:var(--text-dim);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .compact-count{font-family:var(--mono);color:var(--pending);font-weight:700;}
-  .compact-row.analyst-row .compact-count{color:var(--warn);}
   .compact-row.subreg-row .compact-count{color:var(--text);}
 
   .queue-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;flex-wrap:wrap;}
@@ -179,7 +177,6 @@
   .legend span{display:inline-flex;align-items:center;gap:4px;}
   .legend .aging-dot{margin-right:0;}
 
-  /* ---- Pendências por analista com detalhamento por unidade ---- */
   .analyst-group{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:10px;transition:box-shadow .15s, border-color .15s;}
   .analyst-group:hover{box-shadow:var(--shadow-xs);border-color:var(--line-strong);}
   .analyst-group:last-child{margin-bottom:0;}
@@ -332,19 +329,14 @@
   </div>
 
 <script>
-// =========================================================================================================
-// CONFIGURAÇÃO DA CONEXÃO DIRETA COM O GOOGLE SHEETS
-// =========================================================================================================
 const CLIENT_ID = '32235161715-bgojuh9jgmb7keac1ugicdfvts9see5i.apps.googleusercontent.com';
 
-// IDs das planilhas de MG e Centro-Oeste/Norte
 const SPREADSHEET_CONFIG = [
   { id: '1ozN26qOj3WORqGlIyRx4EGD7wEVv9Hx-kWJCH2Zh5Mw', regional: 'MG' },
   { id: '1qgFSj2J7yIZZgJAKcoXxjiyL5juG-89SCfRNIotPSBs', regional: 'CO/N' }
 ];
 
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
-// =========================================================================================================
 
 let tokenClient;
 let records = [];
@@ -353,7 +345,6 @@ let isGisLoaded = false;
 const EXCLUDED_KEYWORDS = ['site leader', 'regional', 'sub regional', 'líder']; 
 const BLOCKED_SHEET_KEYWORDS = ['query','consolidado','summary','modelo','cargos','base nomes','duplicar'];
 
-// Controle das abas individuais selecionadas
 let activeTabs = {
   unit: 'ALL',
   analyst: 'ALL',
@@ -480,25 +471,26 @@ async function fetchAllSheetsFromGoogle(){
   try{
     records = [];
 
-    await Promise.all(SPREADSHEET_CONFIG.map(async (config) => {
+    for (const config of SPREADSHEET_CONFIG) {
+      if (!config.id || config.id.includes('COLE_O_ID')) continue;
+      
       const metadata = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: config.id });
-      const allSheetNames = metadata.result.sheets.map(s => s.properties.title);
-      const validSheetNames = allSheetNames.filter(name => !BLOCKED_SHEET_KEYWORDS.some(k => name.toLowerCase().includes(k)));
+      const allSheets = metadata.result.sheets || [];
 
-      if (validSheetNames.length === 0) return;
+      for (const sheet of allSheets) {
+        const title = sheet.properties.title;
+        if (BLOCKED_SHEET_KEYWORDS.some(k => title.toLowerCase().includes(k))) continue;
 
-      const ranges = validSheetNames.map(name => `'${name}'!A1:Z1500`);
-      const batch = await gapi.client.sheets.spreadsheets.values.batchGet({
-        spreadsheetId: config.id,
-        ranges: ranges,
-      });
+        const res = await gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: config.id,
+          range: `'${title}'!A1:Z1500`
+        });
 
-      batch.result.valueRanges.forEach((vr, i) => {
-        const rows = vr.values || [];
+        const rows = res.result.values || [];
         const analyst = extractAnalyst(rows);
-        processSheetRows(rows, validSheetNames[i], analyst, config.regional);
-      });
-    }));
+        processSheetRows(rows, title, analyst, config.regional);
+      }
+    }
 
     render();
     document.getElementById('dashboard').classList.add('show');
@@ -656,7 +648,6 @@ function render(){
   document.getElementById('kpi-total').textContent = total;
   document.getElementById('kpi-pct').textContent = pct + '%';
 
-  // 1. Pendências por unidade (Filtrado por aba)
   const pendingUnit = activeTabs.unit === 'ALL' ? pending : pending.filter(r => r.regional === activeTabs.unit);
   const byUnit = {};
   pendingUnit.forEach(r=>{ byUnit[r.hub] = (byUnit[r.hub]||0) + 1; });
@@ -670,7 +661,6 @@ function render(){
       <div class="track"><div class="track-fill" style="width:${(count/maxUnit*100).toFixed(0)}%"></div></div>
     </div>`).join('') : '<div class="empty-state">Nenhuma pendência 🎉</div>';
 
-  // 2. Pendências por ANALISTA (Filtrado por aba)
   const pendingAnalyst = activeTabs.analyst === 'ALL' ? pending : pending.filter(r => r.regional === activeTabs.analyst);
   const byAnalystUnit = {};
   pendingAnalyst.forEach(r=>{
@@ -697,7 +687,6 @@ function render(){
     </div>
   `).join('') : '<div class="empty-state">Nenhum analista com pendências! 🎉</div>';
 
-  // 3. Pendências por SUB REGIONAL (Filtrado por aba)
   const pendingSubReg = activeTabs.subreg === 'ALL' ? pending : pending.filter(r => r.regional === activeTabs.subreg);
   const bySubReg = {};
   pendingSubReg.forEach(r=>{ bySubReg[r.subReg] = (bySubReg[r.subReg]||0) + 1; });
@@ -710,7 +699,6 @@ function render(){
     </div>
   `).join('') : '<div class="empty-state">Nenhuma pendência por Sub Regional 🎉</div>';
 
-  // Atualização dos filtros Selects
   const unitFilter = document.getElementById('unit-filter');
   const currentUnitVal = unitFilter.value;
   unitFilter.innerHTML = '<option value="">Todas as unidades</option>' +
