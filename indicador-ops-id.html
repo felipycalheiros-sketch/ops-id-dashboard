@@ -107,7 +107,6 @@
   .kpi.done .value{color:var(--done);}
   .kpi.pct .value{color:var(--warn);}
 
-  /* Títulos das Seções de Regional */
   .regional-section-header {
     display: flex;
     align-items: center;
@@ -197,7 +196,6 @@
   .legend span{display:inline-flex;align-items:center;gap:4px;}
   .legend .aging-dot{margin-right:0;}
 
-  /* ---- Pendências por analista com detalhamento por unidade ---- */
   .analyst-group{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:10px;transition:box-shadow .15s, border-color .15s;}
   .analyst-group:hover{box-shadow:var(--shadow-xs);border-color:var(--line-strong);}
   .analyst-group:last-child{margin-bottom:0;}
@@ -348,9 +346,6 @@
   </div>
 
 <script>
-// =========================================================================================================
-// CONFIGURAÇÃO DA CONEXÃO DIRETA COM O GOOGLE SHEETS
-// =========================================================================================================
 const CLIENT_ID = '32235161715-bgojuh9jgmb7keac1ugicdfvts9see5i.apps.googleusercontent.com';
 
 const SPREADSHEETS = [
@@ -359,7 +354,6 @@ const SPREADSHEETS = [
 ];
 
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
-// =========================================================================================================
 
 let tokenClient;
 let records = [];
@@ -511,6 +505,17 @@ async function fetchAllSheetsFromGoogle(){
   }
 }
 
+// Função auxiliar para validar se um texto de Hub é válido
+function cleanHubName(rawVal, sheetName) {
+  if (!rawVal) return sheetName;
+  const cleaned = rawVal.toString().trim();
+  // Se for apenas traços, pontos ou em branco, usa o nome da aba
+  if (cleaned === '' || /^[_\-\—\s\.\/]+$/.test(cleaned)) {
+    return sheetName;
+  }
+  return cleaned;
+}
+
 function processSheetRows(rows, sheetName, analyst, sourceRegional){
   let headerIdx=-1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
   for(let r=0; r<Math.min(rows.length, 10); r++){
@@ -534,7 +539,11 @@ function processSheetRows(rows, sheetName, analyst, sourceRegional){
     const nome = colNome!==-1 ? (row[colNome]||'').toString().trim() : '';
     if(!nome) continue;
     const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
-    const hub = row[colHub] ? row[colHub].toString().trim() : '—';
+    
+    // Fallback: se a coluna de Hub estiver com "-", usa o nome da aba (sheetName)
+    const rawHub = row[colHub];
+    const hub = cleanHubName(rawHub, sheetName);
+
     const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
     const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
     const dataEntradaRaw = colData!==-1 ? row[colData] : null;
@@ -544,7 +553,6 @@ function processSheetRows(rows, sheetName, analyst, sourceRegional){
     const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
     if(deveExcluir) continue;
 
-    // Determina a Regional com base na Sub Regional ou na planilha de origem
     let regional = sourceRegional;
     if(subReg.toUpperCase().includes('MG')) regional = 'MG';
     else if(subReg.toUpperCase().includes('CO') || subReg.toUpperCase().includes('NO')) regional = 'CO/N';
@@ -619,7 +627,11 @@ function processWorkbook(wb, fileName = ''){
       const nome = colNome!==-1 ? (row[colNome]||'').toString().trim() : '';
       if(!nome) continue;
       const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
-      const hub = row[colHub] ? row[colHub].toString().trim() : '—';
+      
+      // Fallback: se a coluna de Hub estiver com "-", usa o nome da aba (sheetName)
+      const rawHub = row[colHub];
+      const hub = cleanHubName(rawHub, sheetName);
+
       const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
       const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
       const dataEntradaRaw = colData!==-1 ? row[colData] : null;
@@ -645,11 +657,9 @@ function daysOpen(date){
   return diff >= 0 ? diff : 0;
 }
 
-// Renderiza uma seção regional específica (MG ou CO/N)
 function renderRegionalSection(regionalCode, prefix) {
   const pending = records.filter(r => r.pendente && r.regional === regionalCode);
   
-  // Atualiza Badge do Total
   document.getElementById(`${prefix}-total-badge`).textContent = `${pending.length} pendência${pending.length !== 1 ? 's' : ''}`;
 
   // 1. Pendências por Unidade
@@ -711,17 +721,14 @@ function render(){
   const done = total - pending.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  // KPIs
   document.getElementById('kpi-pending').textContent = pending.length;
   document.getElementById('kpi-done').textContent = done;
   document.getElementById('kpi-total').textContent = total;
   document.getElementById('kpi-pct').textContent = pct + '%';
 
-  // Renderiza Seção MG e Seção CO/N
   renderRegionalSection('MG', 'mg');
   renderRegionalSection('CO/N', 'con');
 
-  // Filtros da tabela
   const unitFilter = document.getElementById('unit-filter');
   const currentUnitVal = unitFilter.value;
   unitFilter.innerHTML = '<option value="">Todas as unidades</option>' +
