@@ -107,6 +107,14 @@
   .kpi.done .value{color:var(--done);}
   .kpi.pct .value{color:var(--warn);}
 
+  /* ---- ESTILOS DAS ABAS REGIONAIS ---- */
+  .panel-header-with-tabs { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 12px; }
+  .panel-header-with-tabs h2 { border-bottom: none !important; padding-bottom: 0 !important; margin: 0 !important; }
+  .regional-tabs { display: flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 2px; gap: 2px; }
+  .tab-btn { border: none; background: transparent; font-size: 10px; font-weight: 700; color: var(--text-dim); padding: 3px 8px; border-radius: 4px; cursor: pointer; transition: all 0.15s ease; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { background: var(--surface); color: var(--brand); box-shadow: var(--shadow-xs); }
+
   .grid-4{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px;}
   @media (max-width:1000px){ .grid-4{grid-template-columns:1fr 1fr;} }
   @media (max-width:650px){ .grid-4{grid-template-columns:1fr;} }
@@ -152,6 +160,10 @@
   .days-cell{font-family:var(--mono);font-weight:600;}
   .tag{font-family:var(--mono);font-size:10px;color:var(--text-dim);background:var(--surface-2);padding:2px 6px;border-radius:5px;font-weight:600;}
   .subreg-tag{background:var(--surface-2);color:var(--text);border:1px solid var(--line);}
+  .reg-badge { font-size: 9px; padding: 2px 5px; border-radius: 4px; font-weight: 700; font-family: var(--mono); }
+  .reg-badge.MG { background: #e0e8ff; color: #3452d9; }
+  .reg-badge.CON { background: #f3e8ff; color: #7b3fe4; }
+
   .empty-state{text-align:center;padding:30px 10px;color:var(--text-faint);font-size:12px;}
 
   .footer-zone{margin-top:26px;border-top:1px solid var(--line);padding-top:18px;}
@@ -239,15 +251,38 @@
 
     <div class="grid-4">
       <div class="panel">
-        <h2>Pendências por unidade</h2>
+        <div class="panel-header-with-tabs">
+          <h2>Pendências por unidade</h2>
+          <div class="regional-tabs" data-target="unit">
+            <button class="tab-btn active" data-reg="ALL">Todas</button>
+            <button class="tab-btn" data-reg="MG">MG</button>
+            <button class="tab-btn" data-reg="CO/N">CO/N</button>
+          </div>
+        </div>
         <div id="unit-list"></div>
       </div>
+
       <div class="panel">
-        <h2>Pendências por Analista</h2>
+        <div class="panel-header-with-tabs">
+          <h2>Pendências por Analista</h2>
+          <div class="regional-tabs" data-target="analyst">
+            <button class="tab-btn active" data-reg="ALL">Todas</button>
+            <button class="tab-btn" data-reg="MG">MG</button>
+            <button class="tab-btn" data-reg="CO/N">CO/N</button>
+          </div>
+        </div>
         <div id="analyst-list"></div>
       </div>
+
       <div class="panel">
-        <h2>Pendências por Sub Regional</h2>
+        <div class="panel-header-with-tabs">
+          <h2>Pendências por Sub Regional</h2>
+          <div class="regional-tabs" data-target="subreg">
+            <button class="tab-btn active" data-reg="ALL">Todas</button>
+            <button class="tab-btn" data-reg="MG">MG</button>
+            <button class="tab-btn" data-reg="CO/N">CO/N</button>
+          </div>
+        </div>
         <div id="subreg-list"></div>
       </div>
     </div>
@@ -257,13 +292,18 @@
         <h2 style="margin:0; border:none; padding:0;">Fila de tratamento e criação</h2>
         <div class="queue-controls">
           <input type="text" id="search" placeholder="Buscar por nome...">
+          <select id="regional-filter">
+            <option value="">Todas as regionais</option>
+            <option value="MG">Regional MG</option>
+            <option value="CO/N">Regional CO/Norte</option>
+          </select>
           <select id="analyst-filter"><option value="">Todos os analistas</option></select>
           <select id="unit-filter"><option value="">Todas as unidades</option></select>
         </div>
       </div>
       <table>
         <thead>
-          <tr><th>Prioridade</th><th>Nome completo</th><th>Unidade</th><th>Sub Regional</th><th>Função</th><th>Data de entrada</th><th>Dias abertos</th></tr>
+          <tr><th>Prioridade</th><th>Nome completo</th><th>Regional</th><th>Unidade</th><th>Sub Regional</th><th>Função</th><th>Data de entrada</th><th>Dias abertos</th></tr>
         </thead>
         <tbody id="queue-body"></tbody>
       </table>
@@ -297,10 +337,10 @@
 // =========================================================================================================
 const CLIENT_ID = '32235161715-bgojuh9jgmb7keac1ugicdfvts9see5i.apps.googleusercontent.com';
 
-// IDs de todas as matrizes a serem conectadas
-const SPREADSHEET_IDS = [
-  '1ozN26qOj3WORqGlIyRx4EGD7wEVv9Hx-kWJCH2Zh5Mw', // Matriz MG
-  '1qgFSj2J7yIZZgJAkcoXxjiyL5juG-89SCfRNIotPSBs', // Matriz CO / Norte
+// IDs das planilhas de MG e Centro-Oeste/Norte
+const SPREADSHEET_CONFIG = [
+  { id: '1ozN26qOj3WORqGlIyRx4EGD7wEVv9Hx-kWJCH2Zh5Mw', regional: 'MG' },
+  { id: '1qgFSj2J7yIZZgJAKcoXxjiyL5juG-89SCfRNIotPSBs', regional: 'CO/N' }
 ];
 
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
@@ -313,10 +353,32 @@ let isGisLoaded = false;
 const EXCLUDED_KEYWORDS = ['site leader', 'regional', 'sub regional', 'líder']; 
 const BLOCKED_SHEET_KEYWORDS = ['query','consolidado','summary','modelo','cargos','base nomes','duplicar'];
 
+// Controle das abas individuais selecionadas
+let activeTabs = {
+  unit: 'ALL',
+  analyst: 'ALL',
+  subreg: 'ALL'
+};
+
 window.addEventListener('load', () => {
   if (typeof gapi !== 'undefined') gapi.load('client', gapiInit);
   if (typeof google !== 'undefined' && google.accounts) gisInit();
+  setupTabListeners();
 });
+
+function setupTabListeners() {
+  document.querySelectorAll('.regional-tabs').forEach(tabContainer => {
+    const target = tabContainer.getAttribute('data-target');
+    tabContainer.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabContainer.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTabs[target] = btn.getAttribute('data-reg');
+        render();
+      });
+    });
+  });
+}
 
 async function gapiInit(){
   try{
@@ -418,9 +480,8 @@ async function fetchAllSheetsFromGoogle(){
   try{
     records = [];
 
-    // Busca simultânea das planilhas cadastradas em SPREADSHEET_IDS
-    await Promise.all(SPREADSHEET_IDS.map(async (spreadsheetId) => {
-      const metadata = await gapi.client.sheets.spreadsheets.get({ spreadsheetId });
+    await Promise.all(SPREADSHEET_CONFIG.map(async (config) => {
+      const metadata = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: config.id });
       const allSheetNames = metadata.result.sheets.map(s => s.properties.title);
       const validSheetNames = allSheetNames.filter(name => !BLOCKED_SHEET_KEYWORDS.some(k => name.toLowerCase().includes(k)));
 
@@ -428,14 +489,14 @@ async function fetchAllSheetsFromGoogle(){
 
       const ranges = validSheetNames.map(name => `'${name}'!A1:Z1500`);
       const batch = await gapi.client.sheets.spreadsheets.values.batchGet({
-        spreadsheetId,
+        spreadsheetId: config.id,
         ranges: ranges,
       });
 
       batch.result.valueRanges.forEach((vr, i) => {
         const rows = vr.values || [];
         const analyst = extractAnalyst(rows);
-        processSheetRows(rows, validSheetNames[i], analyst);
+        processSheetRows(rows, validSheetNames[i], analyst, config.regional);
       });
     }));
 
@@ -457,7 +518,7 @@ async function fetchAllSheetsFromGoogle(){
   }
 }
 
-function processSheetRows(rows, sheetName, analyst){
+function processSheetRows(rows, sheetName, analyst, regional = 'MG'){
   let headerIdx=-1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
   for(let r=0; r<Math.min(rows.length, 10); r++){
     const idx = findHeaderCol(rows[r]||[], ['ops id']);
@@ -465,7 +526,7 @@ function processSheetRows(rows, sheetName, analyst){
       headerIdx = r;
       colOpsId = idx;
       colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']); 
-      colHub = 1; // Coluna B contém a informação do Hub
+      colHub = 1;
       colNome = findHeaderCol(rows[r], ['nome completo','nome']);
       colFuncao = findHeaderCol(rows[r], ['função','funcao']);
       colData = findHeaderCol(rows[r], ['data de entrada','data admiss']);
@@ -480,7 +541,7 @@ function processSheetRows(rows, sheetName, analyst){
     const nome = colNome!==-1 ? (row[colNome]||'').toString().trim() : '';
     if(!nome) continue;
     const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
-    const hub = row[colHub] ? row[colHub].toString().trim() : '—'; // sempre a partir da coluna B, sem cair no nome da aba
+    const hub = row[colHub] ? row[colHub].toString().trim() : '—';
     const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
     const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
     const dataEntradaRaw = colData!==-1 ? row[colData] : null;
@@ -490,7 +551,7 @@ function processSheetRows(rows, sheetName, analyst){
     const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
     if(deveExcluir) continue;
     
-    records.push({ nome, hub, subReg, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
+    records.push({ nome, hub, subReg, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada, regional });
   }
 }
 
@@ -525,7 +586,12 @@ function isBlank(v){
   return s === '';
 }
 
-function processWorkbook(wb){
+function processWorkbook(wb, filename = ''){
+  let defaultReg = 'MG';
+  if(filename.toLowerCase().includes('co') || filename.toLowerCase().includes('norte')) {
+    defaultReg = 'CO/N';
+  }
+
   wb.SheetNames.forEach(sheetName => {
     const sheetLower = sheetName.toLowerCase();
     if(BLOCKED_SHEET_KEYWORDS.some(k => sheetLower.includes(k))) return;
@@ -541,7 +607,7 @@ function processWorkbook(wb){
         headerIdx = r;
         colOpsId = idx;
         colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']);
-        colHub = 1; // Coluna B contém a informação do Hub
+        colHub = 1;
         colNome = findHeaderCol(rows[r], ['nome completo','nome']);
         colFuncao = findHeaderCol(rows[r], ['função','funcao']);
         colData = findHeaderCol(rows[r], ['data de entrada','data admiss']);
@@ -556,7 +622,7 @@ function processWorkbook(wb){
       const nome = colNome!==-1 ? (row[colNome]||'').toString().trim() : '';
       if(!nome) continue;
       const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
-      const hub = row[colHub] ? row[colHub].toString().trim() : '—'; // sempre a partir da coluna B, sem cair no nome da aba
+      const hub = row[colHub] ? row[colHub].toString().trim() : '—';
       const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
       const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
       const dataEntradaRaw = colData!==-1 ? row[colData] : null;
@@ -566,7 +632,7 @@ function processWorkbook(wb){
       const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
       if(deveExcluir) continue;
       
-      records.push({ nome, hub, subReg, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
+      records.push({ nome, hub, subReg, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada, regional: defaultReg });
     }
   });
 }
@@ -590,9 +656,10 @@ function render(){
   document.getElementById('kpi-total').textContent = total;
   document.getElementById('kpi-pct').textContent = pct + '%';
 
-  // 1. Pendências por unidade
+  // 1. Pendências por unidade (Filtrado por aba)
+  const pendingUnit = activeTabs.unit === 'ALL' ? pending : pending.filter(r => r.regional === activeTabs.unit);
   const byUnit = {};
-  pending.forEach(r=>{ byUnit[r.hub] = (byUnit[r.hub]||0) + 1; });
+  pendingUnit.forEach(r=>{ byUnit[r.hub] = (byUnit[r.hub]||0) + 1; });
   const unitEntries = Object.entries(byUnit).sort((a,b)=>b[1]-a[1]);
   const maxUnit = unitEntries.length ? unitEntries[0][1] : 1;
   const unitList = document.getElementById('unit-list');
@@ -603,9 +670,10 @@ function render(){
       <div class="track"><div class="track-fill" style="width:${(count/maxUnit*100).toFixed(0)}%"></div></div>
     </div>`).join('') : '<div class="empty-state">Nenhuma pendência 🎉</div>';
 
-  // 2. Pendências por ANALISTA (com detalhamento por unidade)
+  // 2. Pendências por ANALISTA (Filtrado por aba)
+  const pendingAnalyst = activeTabs.analyst === 'ALL' ? pending : pending.filter(r => r.regional === activeTabs.analyst);
   const byAnalystUnit = {};
-  pending.forEach(r=>{
+  pendingAnalyst.forEach(r=>{
     if(!byAnalystUnit[r.analyst]) byAnalystUnit[r.analyst] = {};
     byAnalystUnit[r.analyst][r.hub] = (byAnalystUnit[r.analyst][r.hub]||0) + 1;
   });
@@ -627,11 +695,12 @@ function render(){
           <span class="analyst-unit-count">${count}</span>
         </div>`).join('')}
     </div>
-  `).join('') : '<div class="empty-state">Nenum analista com pendências! 🎉</div>';
+  `).join('') : '<div class="empty-state">Nenhum analista com pendências! 🎉</div>';
 
-  // 3. Pendências por SUB REGIONAL
+  // 3. Pendências por SUB REGIONAL (Filtrado por aba)
+  const pendingSubReg = activeTabs.subreg === 'ALL' ? pending : pending.filter(r => r.regional === activeTabs.subreg);
   const bySubReg = {};
-  pending.forEach(r=>{ bySubReg[r.subReg] = (bySubReg[r.subReg]||0) + 1; });
+  pendingSubReg.forEach(r=>{ bySubReg[r.subReg] = (bySubReg[r.subReg]||0) + 1; });
   const subRegEntries = Object.entries(bySubReg).sort((a,b)=>b[1]-a[1]);
   const subregList = document.getElementById('subreg-list');
   subregList.innerHTML = subRegEntries.length ? subRegEntries.map(([name,count])=>`
@@ -641,6 +710,7 @@ function render(){
     </div>
   `).join('') : '<div class="empty-state">Nenhuma pendência por Sub Regional 🎉</div>';
 
+  // Atualização dos filtros Selects
   const unitFilter = document.getElementById('unit-filter');
   const currentUnitVal = unitFilter.value;
   unitFilter.innerHTML = '<option value="">Todas as unidades</option>' +
@@ -658,12 +728,14 @@ function render(){
 
 function renderQueue(){
   const search = document.getElementById('search').value.trim().toLowerCase();
+  const regionalFilter = document.getElementById('regional-filter').value;
   const unitFilter = document.getElementById('unit-filter').value;
   const analystFilter = document.getElementById('analyst-filter').value;
 
   let list = records.filter(r=>r.pendente);
 
   if(search) list = list.filter(r=>r.nome.toLowerCase().includes(search));
+  if(regionalFilter) list = list.filter(r=>r.regional === regionalFilter);
   if(unitFilter) list = list.filter(r=>r.hub === unitFilter);
   if(analystFilter) list = list.filter(r=>r.analyst === analystFilter);
 
@@ -686,9 +758,12 @@ function renderQueue(){
     else if(r.days >= 3) cls = 'aging-warn';
     const dateStr = r.dataEntrada ? r.dataEntrada.toLocaleDateString('pt-BR') : '—';
     const daysStr = r.days !== null ? r.days + ' dias' : '—';
+    const regBadgeClass = r.regional === 'CO/N' ? 'CON' : 'MG';
+    
     return `<tr class="${cls}">
       <td><span class="aging-dot"></span></td>
       <td>${r.nome}</td>
+      <td><span class="reg-badge ${regBadgeClass}">${r.regional}</span></td>
       <td><span class="tag">${r.hub}</span></td>
       <td><span class="tag subreg-tag">${r.subReg}</span></td>
       <td>${r.funcao}</td>
@@ -699,6 +774,7 @@ function renderQueue(){
 }
 
 document.getElementById('search').addEventListener('input', renderQueue);
+document.getElementById('regional-filter').addEventListener('change', renderQueue);
 document.getElementById('unit-filter').addEventListener('change', renderQueue);
 document.getElementById('analyst-filter').addEventListener('change', renderQueue);
 
@@ -716,7 +792,7 @@ async function handleFiles(fileList){
     const buffer = await file.arrayBuffer();
     const data = new Uint8Array(buffer);
     const wb = XLSX.read(data, {type:'array', cellDates:true});
-    processWorkbook(wb);
+    processWorkbook(wb, file.name);
     names.push(file.name);
   }
 
@@ -730,7 +806,7 @@ async function handleFiles(fileList){
 
 fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 ['dragover','dragenter'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
-['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }));
+['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
 dropzone.addEventListener('drop', e => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
 </script>
 </body>
