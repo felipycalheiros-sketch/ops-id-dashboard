@@ -340,6 +340,7 @@
     <div class="footer-notes">
       <strong>Notas de filtragem e segurança:</strong><br>
       • O nome do Hub/Unidade é sempre baseado no título da aba da planilha.<br>
+      • A Sub Regional é extraída diretamente da célula <strong>C1</strong> de cada aba.<br>
       • Os cargos que contêm "Regional", "Sub Regional" ou "Site Leader" são excluídos automaticamente da contagem.<br>
       • Abas que contenham no título palavras-chave como "Query", "Consolidado", "Summary", "Modelo" e "Base" são ignoradas para evitar duplicidade de registros.<br>
       • Os nomes dos analistas são extraídos diretamente do campo "PTS Regional: [Nome]" localizado na primeira linha de cada aba.
@@ -461,6 +462,14 @@ function extractAnalyst(rows){
   return 'Não identificado';
 }
 
+function extractSubRegC1(rows){
+  if(rows && rows.length > 0 && rows[0] && rows[0].length >= 3){
+    const val = (rows[0][2] || '').toString().trim();
+    if(val) return val;
+  }
+  return 'Não informada';
+}
+
 async function fetchAllSheetsFromGoogle(){
   const clockText = document.getElementById('clock-text');
   clockText.textContent = 'Lendo planilhas do Google Sheets...';
@@ -484,7 +493,8 @@ async function fetchAllSheetsFromGoogle(){
       batch.result.valueRanges.forEach((vr, i) => {
         const rows = vr.values || [];
         const analyst = extractAnalyst(rows);
-        processSheetRows(rows, validSheetNames[i], analyst, item.regional);
+        const subRegC1 = extractSubRegC1(rows);
+        processSheetRows(rows, validSheetNames[i], analyst, subRegC1, item.regional);
       });
     }));
 
@@ -506,14 +516,13 @@ async function fetchAllSheetsFromGoogle(){
   }
 }
 
-function processSheetRows(rows, sheetName, analyst, sourceRegional){
-  let headerIdx=-1, colOpsId=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
+function processSheetRows(rows, sheetName, analyst, subRegC1, sourceRegional){
+  let headerIdx=-1, colOpsId=-1, colNome=-1, colFuncao=-1, colData=-1;
   for(let r=0; r<Math.min(rows.length, 10); r++){
     const idx = findHeaderCol(rows[r]||[], ['ops id']);
     if(idx !== -1){
       headerIdx = r;
       colOpsId = idx;
-      colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']); 
       colNome = findHeaderCol(rows[r], ['nome completo','nome']);
       colFuncao = findHeaderCol(rows[r], ['função','funcao']);
       colData = findHeaderCol(rows[r], ['data de entrada','data admiss']);
@@ -529,10 +538,8 @@ function processSheetRows(rows, sheetName, analyst, sourceRegional){
     if(!nome) continue;
     const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
     
-    // Hub padronizado diretamente pelo nome da aba
     const hub = sheetName.trim();
-
-    const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
+    const subReg = subRegC1;
     const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
     const dataEntradaRaw = colData!==-1 ? row[colData] : null;
     const dataEntrada = dataEntradaRaw ? parseDate(dataEntradaRaw) : null;
@@ -588,18 +595,19 @@ function processWorkbook(wb, fileName = ''){
     const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
     
     const analyst = extractAnalyst(rows);
+    const subRegC1 = extractSubRegC1(rows);
+
     let sourceRegional = 'MG';
     if(fileName.toLowerCase().includes('co') || fileName.toLowerCase().includes('norte')) {
       sourceRegional = 'CO/N';
     }
     
-    let headerIdx = -1, colOpsId=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
+    let headerIdx = -1, colOpsId=-1, colNome=-1, colFuncao=-1, colData=-1;
     for(let r=0; r<Math.min(rows.length, 10); r++){
       const idx = findHeaderCol(rows[r], ['ops id']);
       if(idx !== -1){
         headerIdx = r;
         colOpsId = idx;
-        colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']);
         colNome = findHeaderCol(rows[r], ['nome completo','nome']);
         colFuncao = findHeaderCol(rows[r], ['função','funcao']);
         colData = findHeaderCol(rows[r], ['data de entrada','data admiss']);
@@ -615,10 +623,8 @@ function processWorkbook(wb, fileName = ''){
       if(!nome) continue;
       const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
       
-      // Hub padronizado diretamente pelo nome da aba
       const hub = sheetName.trim();
-
-      const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
+      const subReg = subRegC1;
       const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
       const dataEntradaRaw = colData!==-1 ? row[colData] : null;
       const dataEntrada = dataEntradaRaw ? parseDate(dataEntradaRaw) : null;
