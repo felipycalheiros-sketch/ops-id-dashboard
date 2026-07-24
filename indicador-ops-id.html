@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gerenciamento de Ops ID | Regional MG</title>
+<title>Gerenciamento de Ops ID | Regional MG, CO e Norte</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -187,7 +187,7 @@
     <div class="title-area">
       <div class="brand-mark">ID</div>
       <div>
-        <h1>Gerenciamento de Ops ID — Regional MG</h1>
+        <h1>Gerenciamento de Ops ID — Regionais MG, CO e Norte</h1>
         <p>Acompanhamento automatizado de criação de usuários e pendências em tempo real</p>
       </div>
     </div>
@@ -196,7 +196,7 @@
 
   <div class="connection-bar">
     <div class="connection-info">
-      <div class="connection-title">Conexão direta com a Matriz FLM</div>
+      <div class="connection-title">Conexão direta com as Matrizes FLM</div>
       <div class="connection-status" id="connection-status">Aguardando conexão com sua conta Google...</div>
     </div>
     <button class="btn-google" id="btn-login">
@@ -296,7 +296,13 @@
 // CONFIGURAÇÃO DA CONEXÃO DIRETA COM O GOOGLE SHEETS
 // =========================================================================================================
 const CLIENT_ID = '32235161715-bgojuh9jgmb7keac1ugicdfvts9see5i.apps.googleusercontent.com';
-const SPREADSHEET_ID = '1ozN26qOj3WORqGlIyRx4EGD7wEVv9Hx-kWJCH2Zh5Mw';
+
+// IDs de todas as matrizes a serem conectadas
+const SPREADSHEET_IDS = [
+  '1ozN26qOj3WORqGlIyRx4EGD7wEVv9Hx-kWJCH2Zh5Mw', // Matriz MG
+  '1qgFSj2J7yIZZgJAkcoXxjiyL5juG-89SCfRNIotPSBs', // Matriz CO / Norte
+];
+
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 // =========================================================================================================
 
@@ -363,7 +369,7 @@ function definirInterfaceDesconectado() {
   const btn = document.getElementById('btn-login');
   btn.className = 'btn-google';
   btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M21.35 11.1H12v2.7h5.38c-.23 1.22-.92 2.25-1.95 2.94v2.44h3.15c1.84-1.7 2.9-4.2 2.9-7.18 0-.54-.05-1.07-.13-1.6z"/><path d="M12 20.6c2.43 0 4.47-.8 5.96-2.2l-3.15-2.44c-.87.58-1.99.94-2.81.94-2.16 0-4-1.46-4.66-3.42H4.1v2.53C5.6 18.4 8.54 20.6 12 20.6z" fill="#34A853"/><path d="M7.34 13.48c-.17-.5-.26-1.03-.26-1.58s.09-1.08.26-1.58V7.79H4.1c-.6 1.2-1 2.56-1 4.01s.4 2.81 1 4.01l3.24-2.53z" fill="#FBBC05"/><path d="M12 7.1c1.32 0 2.5.45 3.44 1.35l2.58-2.58C16.46 4.34 14.43 3.4 12 3.4 8.54 3.4 5.6 5.6 4.1 8.59l3.24 2.53c.66-1.96 2.5-3.42 4.66-3.42z" fill="#EA4335"/></svg> Conectar com Google`;
-  document.getElementById('connection-status').textContent = 'Entre com sua conta Google para carregar a planilha diretamente.';
+  document.getElementById('connection-status').textContent = 'Entre com sua conta Google para carregar as planilhas diretamente.';
   document.getElementById('clock-text').textContent = 'Aguardando planilha';
   document.getElementById('clock').classList.remove('live');
 }
@@ -407,28 +413,35 @@ function extractAnalyst(rows){
 
 async function fetchAllSheetsFromGoogle(){
   const clockText = document.getElementById('clock-text');
-  clockText.textContent = 'Lendo abas do Google Sheets...';
+  clockText.textContent = 'Lendo planilhas do Google Sheets...';
+  
   try{
-    const metadata = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
-    const allSheetNames = metadata.result.sheets.map(s => s.properties.title);
-    const validSheetNames = allSheetNames.filter(name => !BLOCKED_SHEET_KEYWORDS.some(k => name.toLowerCase().includes(k)));
-
-    const ranges = validSheetNames.map(name => `'${name}'!A1:Z1500`);
-    const batch = await gapi.client.sheets.spreadsheets.values.batchGet({
-      spreadsheetId: SPREADSHEET_ID,
-      ranges: ranges,
-    });
-
     records = [];
-    batch.result.valueRanges.forEach((vr, i) => {
-      const rows = vr.values || [];
-      const analyst = extractAnalyst(rows);
-      processSheetRows(rows, validSheetNames[i], analyst);
-    });
+
+    // Busca simultânea das planilhas cadastradas em SPREADSHEET_IDS
+    await Promise.all(SPREADSHEET_IDS.map(async (spreadsheetId) => {
+      const metadata = await gapi.client.sheets.spreadsheets.get({ spreadsheetId });
+      const allSheetNames = metadata.result.sheets.map(s => s.properties.title);
+      const validSheetNames = allSheetNames.filter(name => !BLOCKED_SHEET_KEYWORDS.some(k => name.toLowerCase().includes(k)));
+
+      if (validSheetNames.length === 0) return;
+
+      const ranges = validSheetNames.map(name => `'${name}'!A1:Z1500`);
+      const batch = await gapi.client.sheets.spreadsheets.values.batchGet({
+        spreadsheetId,
+        ranges: ranges,
+      });
+
+      batch.result.valueRanges.forEach((vr, i) => {
+        const rows = vr.values || [];
+        const analyst = extractAnalyst(rows);
+        processSheetRows(rows, validSheetNames[i], analyst);
+      });
+    }));
 
     render();
     document.getElementById('dashboard').classList.add('show');
-    document.getElementById('connection-status').textContent = `Sincronizado diretamente com a planilha oficial.`;
+    document.getElementById('connection-status').textContent = `Sincronizado diretamente com as planilhas oficiais.`;
     const clock = document.getElementById('clock');
     clock.classList.add('live');
     clockText.textContent = 'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
@@ -439,7 +452,7 @@ async function fetchAllSheetsFromGoogle(){
       localStorage.removeItem('g_oauth_token_expires');
       definirInterfaceDesconectado();
     } else {
-      alert('Erro ao sincronizar dados do Google: ' + (err.result?.error?.message || 'verifique as permissões de acesso da planilha.'));
+      alert('Erro ao sincronizar dados do Google: ' + (err.result?.error?.message || 'verifique as permissões de acesso às planilhas.'));
     }
   }
 }
@@ -614,7 +627,7 @@ function render(){
           <span class="analyst-unit-count">${count}</span>
         </div>`).join('')}
     </div>
-  `).join('') : '<div class="empty-state">Nenhum analista com pendências! 🎉</div>';
+  `).join('') : '<div class="empty-state">Nenum analista com pendências! 🎉</div>';
 
   // 3. Pendências por SUB REGIONAL
   const bySubReg = {};
@@ -717,7 +730,7 @@ async function handleFiles(fileList){
 
 fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 ['dragover','dragenter'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
-['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }));
 dropzone.addEventListener('drop', e => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
 </script>
 </body>
