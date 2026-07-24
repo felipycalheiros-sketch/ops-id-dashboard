@@ -339,6 +339,7 @@
     
     <div class="footer-notes">
       <strong>Notas de filtragem e segurança:</strong><br>
+      • O nome do Hub/Unidade é sempre baseado no título da aba da planilha.<br>
       • Os cargos que contêm "Regional", "Sub Regional" ou "Site Leader" são excluídos automaticamente da contagem.<br>
       • Abas que contenham no título palavras-chave como "Query", "Consolidado", "Summary", "Modelo" e "Base" são ignoradas para evitar duplicidade de registros.<br>
       • Os nomes dos analistas são extraídos diretamente do campo "PTS Regional: [Nome]" localizado na primeira linha de cada aba.
@@ -505,26 +506,14 @@ async function fetchAllSheetsFromGoogle(){
   }
 }
 
-// Função auxiliar para validar se um texto de Hub é válido
-function cleanHubName(rawVal, sheetName) {
-  if (!rawVal) return sheetName;
-  const cleaned = rawVal.toString().trim();
-  // Se for apenas traços, pontos ou em branco, usa o nome da aba
-  if (cleaned === '' || /^[_\-\—\s\.\/]+$/.test(cleaned)) {
-    return sheetName;
-  }
-  return cleaned;
-}
-
 function processSheetRows(rows, sheetName, analyst, sourceRegional){
-  let headerIdx=-1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
+  let headerIdx=-1, colOpsId=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
   for(let r=0; r<Math.min(rows.length, 10); r++){
     const idx = findHeaderCol(rows[r]||[], ['ops id']);
     if(idx !== -1){
       headerIdx = r;
       colOpsId = idx;
       colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']); 
-      colHub = 1;
       colNome = findHeaderCol(rows[r], ['nome completo','nome']);
       colFuncao = findHeaderCol(rows[r], ['função','funcao']);
       colData = findHeaderCol(rows[r], ['data de entrada','data admiss']);
@@ -540,9 +529,8 @@ function processSheetRows(rows, sheetName, analyst, sourceRegional){
     if(!nome) continue;
     const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
     
-    // Fallback: se a coluna de Hub estiver com "-", usa o nome da aba (sheetName)
-    const rawHub = row[colHub];
-    const hub = cleanHubName(rawHub, sheetName);
+    // Hub padronizado diretamente pelo nome da aba
+    const hub = sheetName.trim();
 
     const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
     const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
@@ -605,14 +593,13 @@ function processWorkbook(wb, fileName = ''){
       sourceRegional = 'CO/N';
     }
     
-    let headerIdx = -1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
+    let headerIdx = -1, colOpsId=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
     for(let r=0; r<Math.min(rows.length, 10); r++){
       const idx = findHeaderCol(rows[r], ['ops id']);
       if(idx !== -1){
         headerIdx = r;
         colOpsId = idx;
         colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']);
-        colHub = 1;
         colNome = findHeaderCol(rows[r], ['nome completo','nome']);
         colFuncao = findHeaderCol(rows[r], ['função','funcao']);
         colData = findHeaderCol(rows[r], ['data de entrada','data admiss']);
@@ -628,9 +615,8 @@ function processWorkbook(wb, fileName = ''){
       if(!nome) continue;
       const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
       
-      // Fallback: se a coluna de Hub estiver com "-", usa o nome da aba (sheetName)
-      const rawHub = row[colHub];
-      const hub = cleanHubName(rawHub, sheetName);
+      // Hub padronizado diretamente pelo nome da aba
+      const hub = sheetName.trim();
 
       const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
       const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
