@@ -481,14 +481,21 @@ async function fetchAllSheetsFromGoogle(){
         const title = sheet.properties.title;
         if (BLOCKED_SHEET_KEYWORDS.some(k => title.toLowerCase().includes(k))) continue;
 
-        const res = await gapi.client.sheets.spreadsheets.values.get({
-          spreadsheetId: config.id,
-          range: `'${title}'!A1:Z1500`
-        });
+        const cleanSheetName = title.replace(/'/g, "''");
+        const rangeParam = `'${cleanSheetName}'!A1:Z1500`;
 
-        const rows = res.result.values || [];
-        const analyst = extractAnalyst(rows);
-        processSheetRows(rows, title, analyst, config.regional);
+        try {
+          const res = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: config.id,
+            range: rangeParam
+          });
+
+          const rows = res.result.values || [];
+          const analyst = extractAnalyst(rows);
+          processSheetRows(rows, title, analyst, config.regional);
+        } catch(sErr) {
+          console.warn(`Aba ignorada ou inacessível (${title}):`, sErr);
+        }
       }
     }
 
