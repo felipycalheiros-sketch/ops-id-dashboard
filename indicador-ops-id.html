@@ -107,8 +107,9 @@
   .kpi.done .value{color:var(--done);}
   .kpi.pct .value{color:var(--warn);}
 
-  .grid-4{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px;}
-  @media (max-width:1000px){ .grid-4{grid-template-columns:1fr 1fr;} }
+  /* Alterado para 4 colunas */
+  .grid-4{display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;margin-bottom:18px;}
+  @media (max-width:1200px){ .grid-4{grid-template-columns:repeat(2, 1fr);} }
   @media (max-width:650px){ .grid-4{grid-template-columns:1fr;} }
   .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);transition:box-shadow .15s;}
   .panel:hover{box-shadow:var(--shadow-md);}
@@ -128,6 +129,7 @@
   .compact-count{font-family:var(--mono);color:var(--pending);font-weight:700;}
   .compact-row.analyst-row .compact-count{color:var(--warn);}
   .compact-row.subreg-row .compact-count{color:var(--text);}
+  .compact-row.regional-row .compact-count{color:var(--brand);}
 
   .queue-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;flex-wrap:wrap;}
   .queue-controls{display:flex;gap:8px;flex-wrap:wrap;}
@@ -237,7 +239,12 @@
       </div>
     </div>
 
+    <!-- Tópicos em Grid 4 colunas -->
     <div class="grid-4">
+      <div class="panel">
+        <h2>Pendências por Regional</h2>
+        <div id="regional-list"></div>
+      </div>
       <div class="panel">
         <h2>Pendências por unidade</h2>
         <div id="unit-list"></div>
@@ -297,10 +304,10 @@
 // =========================================================================================================
 const CLIENT_ID = '32235161715-bgojuh9jgmb7keac1ugicdfvts9see5i.apps.googleusercontent.com';
 
-// IDs de todas as matrizes a serem conectadas
-const SPREADSHEET_IDS = [
-  '1ozN26qOj3WORqGlIyRx4EGD7wEVv9Hx-kWJCH2Zh5Mw', // Matriz MG
-  '1qgFSj2J7yIZZgJAkcoXxjiyL5juG-89SCfRNIotPSBs', // Matriz CO / Norte
+// IDs das planilhas mapeados com a identificação da Regional
+const SPREADSHEETS = [
+  { id: '1ozN26qOj3WORqGlIyRx4EGD7wEVv9Hx-kWJCH2Zh5Mw', regional: 'Regional MG' },
+  { id: '1qgFSj2J7yIZZgJAkcoXxjiyL5juG-89SCfRNIotPSBs', regional: 'Regional CO/N' }
 ];
 
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
@@ -418,9 +425,8 @@ async function fetchAllSheetsFromGoogle(){
   try{
     records = [];
 
-    // Busca simultânea das planilhas cadastradas em SPREADSHEET_IDS
-    await Promise.all(SPREADSHEET_IDS.map(async (spreadsheetId) => {
-      const metadata = await gapi.client.sheets.spreadsheets.get({ spreadsheetId });
+    await Promise.all(SPREADSHEETS.map(async (item) => {
+      const metadata = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: item.id });
       const allSheetNames = metadata.result.sheets.map(s => s.properties.title);
       const validSheetNames = allSheetNames.filter(name => !BLOCKED_SHEET_KEYWORDS.some(k => name.toLowerCase().includes(k)));
 
@@ -428,14 +434,14 @@ async function fetchAllSheetsFromGoogle(){
 
       const ranges = validSheetNames.map(name => `'${name}'!A1:Z1500`);
       const batch = await gapi.client.sheets.spreadsheets.values.batchGet({
-        spreadsheetId,
+        spreadsheetId: item.id,
         ranges: ranges,
       });
 
       batch.result.valueRanges.forEach((vr, i) => {
         const rows = vr.values || [];
         const analyst = extractAnalyst(rows);
-        processSheetRows(rows, validSheetNames[i], analyst);
+        processSheetRows(rows, validSheetNames[i], analyst, item.regional);
       });
     }));
 
@@ -457,7 +463,7 @@ async function fetchAllSheetsFromGoogle(){
   }
 }
 
-function processSheetRows(rows, sheetName, analyst){
+function processSheetRows(rows, sheetName, analyst, regional = 'MG'){
   let headerIdx=-1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
   for(let r=0; r<Math.min(rows.length, 10); r++){
     const idx = findHeaderCol(rows[r]||[], ['ops id']);
@@ -465,7 +471,7 @@ function processSheetRows(rows, sheetName, analyst){
       headerIdx = r;
       colOpsId = idx;
       colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']); 
-      colHub = 1; // Coluna B contém a informação do Hub
+      colHub = 1;
       colNome = findHeaderCol(rows[r], ['nome completo','nome']);
       colFuncao = findHeaderCol(rows[r], ['função','funcao']);
       colData = findHeaderCol(rows[r], ['data de entrada','data admiss']);
@@ -480,7 +486,7 @@ function processSheetRows(rows, sheetName, analyst){
     const nome = colNome!==-1 ? (row[colNome]||'').toString().trim() : '';
     if(!nome) continue;
     const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
-    const hub = row[colHub] ? row[colHub].toString().trim() : '—'; // sempre a partir da coluna B, sem cair no nome da aba
+    const hub = row[colHub] ? row[colHub].toString().trim() : '—';
     const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
     const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
     const dataEntradaRaw = colData!==-1 ? row[colData] : null;
@@ -490,7 +496,7 @@ function processSheetRows(rows, sheetName, analyst){
     const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
     if(deveExcluir) continue;
     
-    records.push({ nome, hub, subReg, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
+    records.push({ nome, hub, subReg, regional, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
   }
 }
 
@@ -525,7 +531,7 @@ function isBlank(v){
   return s === '';
 }
 
-function processWorkbook(wb){
+function processWorkbook(wb, fileName = ''){
   wb.SheetNames.forEach(sheetName => {
     const sheetLower = sheetName.toLowerCase();
     if(BLOCKED_SHEET_KEYWORDS.some(k => sheetLower.includes(k))) return;
@@ -533,6 +539,10 @@ function processWorkbook(wb){
     const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
     
     const analyst = extractAnalyst(rows);
+    let regional = 'Regional MG';
+    if(fileName.toLowerCase().includes('co') || fileName.toLowerCase().includes('norte')) {
+      regional = 'Regional CO/N';
+    }
     
     let headerIdx = -1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
     for(let r=0; r<Math.min(rows.length, 10); r++){
@@ -541,7 +551,7 @@ function processWorkbook(wb){
         headerIdx = r;
         colOpsId = idx;
         colSubReg = findHeaderCol(rows[r], ['sub regional', 'subregional', 'regional']);
-        colHub = 1; // Coluna B contém a informação do Hub
+        colHub = 1;
         colNome = findHeaderCol(rows[r], ['nome completo','nome']);
         colFuncao = findHeaderCol(rows[r], ['função','funcao']);
         colData = findHeaderCol(rows[r], ['data de entrada','data admiss']);
@@ -556,7 +566,7 @@ function processWorkbook(wb){
       const nome = colNome!==-1 ? (row[colNome]||'').toString().trim() : '';
       if(!nome) continue;
       const opsIdVal = colOpsId!==-1 ? row[colOpsId] : '';
-      const hub = row[colHub] ? row[colHub].toString().trim() : '—'; // sempre a partir da coluna B, sem cair no nome da aba
+      const hub = row[colHub] ? row[colHub].toString().trim() : '—';
       const subReg = colSubReg!==-1 && row[colSubReg] ? row[colSubReg].toString().trim() : '—';
       const funcao = colFuncao!==-1 ? (row[colFuncao]||'').toString().trim() : '—';
       const dataEntradaRaw = colData!==-1 ? row[colData] : null;
@@ -566,7 +576,7 @@ function processWorkbook(wb){
       const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
       if(deveExcluir) continue;
       
-      records.push({ nome, hub, subReg, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
+      records.push({ nome, hub, subReg, regional, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
     }
   });
 }
@@ -590,7 +600,28 @@ function render(){
   document.getElementById('kpi-total').textContent = total;
   document.getElementById('kpi-pct').textContent = pct + '%';
 
-  // 1. Pendências por unidade
+  // 1. Pendências por REGIONAL (MG e CO/N)
+  const byRegional = { 'Regional MG': 0, 'Regional CO/N': 0 };
+  pending.forEach(r => {
+    let reg = r.regional || 'Regional MG';
+    if(r.subReg && (r.subReg.includes('CO') || r.subReg.includes('NO'))) {
+      reg = 'Regional CO/N';
+    } else if(r.subReg && r.subReg.includes('MG')) {
+      reg = 'Regional MG';
+    }
+    byRegional[reg] = (byRegional[reg] || 0) + 1;
+  });
+  
+  const regionalEntries = Object.entries(byRegional).sort((a,b)=>b[1]-a[1]);
+  const regionalList = document.getElementById('regional-list');
+  regionalList.innerHTML = regionalEntries.length ? regionalEntries.map(([name,count])=>`
+    <div class="compact-row regional-row">
+      <span class="compact-name" title="${name}">${name}</span>
+      <span class="compact-count">${count}</span>
+    </div>
+  `).join('') : '<div class="empty-state">Nenhuma pendência 🎉</div>';
+
+  // 2. Pendências por unidade
   const byUnit = {};
   pending.forEach(r=>{ byUnit[r.hub] = (byUnit[r.hub]||0) + 1; });
   const unitEntries = Object.entries(byUnit).sort((a,b)=>b[1]-a[1]);
@@ -603,7 +634,7 @@ function render(){
       <div class="track"><div class="track-fill" style="width:${(count/maxUnit*100).toFixed(0)}%"></div></div>
     </div>`).join('') : '<div class="empty-state">Nenhuma pendência 🎉</div>';
 
-  // 2. Pendências por ANALISTA (com detalhamento por unidade)
+  // 3. Pendências por ANALISTA
   const byAnalystUnit = {};
   pending.forEach(r=>{
     if(!byAnalystUnit[r.analyst]) byAnalystUnit[r.analyst] = {};
@@ -627,9 +658,9 @@ function render(){
           <span class="analyst-unit-count">${count}</span>
         </div>`).join('')}
     </div>
-  `).join('') : '<div class="empty-state">Nenum analista com pendências! 🎉</div>';
+  `).join('') : '<div class="empty-state">Nenhum analista com pendências! 🎉</div>';
 
-  // 3. Pendências por SUB REGIONAL
+  // 4. Pendências por SUB REGIONAL
   const bySubReg = {};
   pending.forEach(r=>{ bySubReg[r.subReg] = (bySubReg[r.subReg]||0) + 1; });
   const subRegEntries = Object.entries(bySubReg).sort((a,b)=>b[1]-a[1]);
@@ -716,7 +747,7 @@ async function handleFiles(fileList){
     const buffer = await file.arrayBuffer();
     const data = new Uint8Array(buffer);
     const wb = XLSX.read(data, {type:'array', cellDates:true});
-    processWorkbook(wb);
+    processWorkbook(wb, file.name);
     names.push(file.name);
   }
 
