@@ -107,14 +107,45 @@
   .kpi.done .value{color:var(--done);}
   .kpi.pct .value{color:var(--warn);}
 
-  /* Alterado para 4 colunas */
-  .grid-4{display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;margin-bottom:18px;}
-  @media (max-width:1200px){ .grid-4{grid-template-columns:repeat(2, 1fr);} }
-  @media (max-width:650px){ .grid-4{grid-template-columns:1fr;} }
+  /* Títulos das Seções de Regional */
+  .regional-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 5px solid var(--brand);
+    border-radius: var(--radius-md);
+    padding: 12px 18px;
+    margin: 24px 0 14px 0;
+    box-shadow: var(--shadow-xs);
+  }
+  .regional-section-header h2 {
+    font-size: 15px;
+    font-weight: 800;
+    margin: 0;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .regional-section-header .total-badge {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--pending-dim);
+    color: var(--pending);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .grid-3{display:grid;grid-template-columns:repeat(3, 1fr);gap:14px;margin-bottom:18px;}
+  @media (max-width:1000px){ .grid-3{grid-template-columns:1fr 1fr;} }
+  @media (max-width:650px){ .grid-3{grid-template-columns:1fr;} }
+  
   .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);transition:box-shadow .15s;}
   .panel:hover{box-shadow:var(--shadow-md);}
-  .panel h2{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-dim);margin:0 0 12px;font-weight:700;border-bottom:1px solid var(--line);padding-bottom:8px;display:flex;align-items:center;gap:7px;}
-  .panel h2::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;}
+  .panel h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-dim);margin:0 0 12px;font-weight:700;border-bottom:1px solid var(--line);padding-bottom:8px;display:flex;align-items:center;gap:7px;}
+  .panel h3::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;}
 
   .unit-row{display:grid;grid-template-columns:1.1fr auto 50px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);}
   .unit-row:last-child{border-bottom:none;}
@@ -127,9 +158,6 @@
   .compact-row:last-child{border-bottom:none;}
   .compact-name{color:var(--text-dim);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .compact-count{font-family:var(--mono);color:var(--pending);font-weight:700;}
-  .compact-row.analyst-row .compact-count{color:var(--warn);}
-  .compact-row.subreg-row .compact-count{color:var(--text);}
-  .compact-row.regional-row .compact-count{color:var(--brand);}
 
   .queue-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;flex-wrap:wrap;}
   .queue-controls{display:flex;gap:8px;flex-wrap:wrap;}
@@ -239,29 +267,50 @@
       </div>
     </div>
 
-    <!-- Tópicos em Grid 4 colunas -->
-    <div class="grid-4">
+    <!-- SEÇÃO REGIONAL MG -->
+    <div class="regional-section-header">
+      <h2>Regional MG</h2>
+      <span class="total-badge" id="mg-total-badge">0 pendências</span>
+    </div>
+    <div class="grid-3">
       <div class="panel">
-        <h2>Pendências por Regional</h2>
-        <div id="regional-list"></div>
+        <h3>Pendências por Unidade</h3>
+        <div id="mg-unit-list"></div>
       </div>
       <div class="panel">
-        <h2>Pendências por unidade</h2>
-        <div id="unit-list"></div>
+        <h3>Pendências por Analista</h3>
+        <div id="mg-analyst-list"></div>
       </div>
       <div class="panel">
-        <h2>Pendências por Analista</h2>
-        <div id="analyst-list"></div>
-      </div>
-      <div class="panel">
-        <h2>Pendências por Sub Regional</h2>
-        <div id="subreg-list"></div>
+        <h3>Pendências por Sub Regional</h3>
+        <div id="mg-subreg-list"></div>
       </div>
     </div>
 
-    <div class="panel">
+    <!-- SEÇÃO REGIONAL CO/N -->
+    <div class="regional-section-header" style="border-left-color: var(--brand-2);">
+      <h2>Regional CO/N</h2>
+      <span class="total-badge" id="con-total-badge">0 pendências</span>
+    </div>
+    <div class="grid-3">
+      <div class="panel">
+        <h3>Pendências por Unidade</h3>
+        <div id="con-unit-list"></div>
+      </div>
+      <div class="panel">
+        <h3>Pendências por Analista</h3>
+        <div id="con-analyst-list"></div>
+      </div>
+      <div class="panel">
+        <h3>Pendências por Sub Regional</h3>
+        <div id="con-subreg-list"></div>
+      </div>
+    </div>
+
+    <!-- FILA GERAL DE TRATAMENTO -->
+    <div class="panel" style="margin-top:24px;">
       <div class="queue-head">
-        <h2 style="margin:0; border:none; padding:0;">Fila de tratamento e criação</h2>
+        <h3 style="margin:0; border:none; padding:0; font-size:12px;">Fila de tratamento e criação</h3>
         <div class="queue-controls">
           <input type="text" id="search" placeholder="Buscar por nome...">
           <select id="analyst-filter"><option value="">Todos os analistas</option></select>
@@ -304,10 +353,9 @@
 // =========================================================================================================
 const CLIENT_ID = '32235161715-bgojuh9jgmb7keac1ugicdfvts9see5i.apps.googleusercontent.com';
 
-// IDs das planilhas mapeados com a identificação da Regional
 const SPREADSHEETS = [
-  { id: '1ozN26qOj3WORqGlIyRx4EGD7wEVv9Hx-kWJCH2Zh5Mw', regional: 'Regional MG' },
-  { id: '1qgFSj2J7yIZZgJAkcoXxjiyL5juG-89SCfRNIotPSBs', regional: 'Regional CO/N' }
+  { id: '1ozN26qOj3WORqGlIyRx4EGD7wEVv9Hx-kWJCH2Zh5Mw', regional: 'MG' },
+  { id: '1qgFSj2J7yIZZgJAkcoXxjiyL5juG-89SCfRNIotPSBs', regional: 'CO/N' }
 ];
 
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
@@ -463,7 +511,7 @@ async function fetchAllSheetsFromGoogle(){
   }
 }
 
-function processSheetRows(rows, sheetName, analyst, regional = 'MG'){
+function processSheetRows(rows, sheetName, analyst, sourceRegional){
   let headerIdx=-1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
   for(let r=0; r<Math.min(rows.length, 10); r++){
     const idx = findHeaderCol(rows[r]||[], ['ops id']);
@@ -495,6 +543,11 @@ function processSheetRows(rows, sheetName, analyst, regional = 'MG'){
     const funcaoNorm = funcao.trim().toLowerCase();
     const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
     if(deveExcluir) continue;
+
+    // Determina a Regional com base na Sub Regional ou na planilha de origem
+    let regional = sourceRegional;
+    if(subReg.toUpperCase().includes('MG')) regional = 'MG';
+    else if(subReg.toUpperCase().includes('CO') || subReg.toUpperCase().includes('NO')) regional = 'CO/N';
     
     records.push({ nome, hub, subReg, regional, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
   }
@@ -539,9 +592,9 @@ function processWorkbook(wb, fileName = ''){
     const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
     
     const analyst = extractAnalyst(rows);
-    let regional = 'Regional MG';
+    let sourceRegional = 'MG';
     if(fileName.toLowerCase().includes('co') || fileName.toLowerCase().includes('norte')) {
-      regional = 'Regional CO/N';
+      sourceRegional = 'CO/N';
     }
     
     let headerIdx = -1, colOpsId=-1, colHub=-1, colNome=-1, colFuncao=-1, colData=-1, colSubReg=-1;
@@ -575,6 +628,10 @@ function processWorkbook(wb, fileName = ''){
       const funcaoNorm = funcao.trim().toLowerCase();
       const deveExcluir = EXCLUDED_KEYWORDS.some(kw => funcaoNorm.includes(kw));
       if(deveExcluir) continue;
+
+      let regional = sourceRegional;
+      if(subReg.toUpperCase().includes('MG')) regional = 'MG';
+      else if(subReg.toUpperCase().includes('CO') || subReg.toUpperCase().includes('NO')) regional = 'CO/N';
       
       records.push({ nome, hub, subReg, regional, analyst, funcao, pendente: isBlank(opsIdVal), dataEntrada });
     }
@@ -588,71 +645,46 @@ function daysOpen(date){
   return diff >= 0 ? diff : 0;
 }
 
-function render(){
-  const total = records.length;
-  const pending = records.filter(r=>r.pendente);
-
-  const done = total - pending.length;
-  const pct = total>0 ? Math.round((done/total)*100) : 0;
-
-  document.getElementById('kpi-pending').textContent = pending.length;
-  document.getElementById('kpi-done').textContent = done;
-  document.getElementById('kpi-total').textContent = total;
-  document.getElementById('kpi-pct').textContent = pct + '%';
-
-  // 1. Pendências por REGIONAL (MG e CO/N)
-  const byRegional = { 'Regional MG': 0, 'Regional CO/N': 0 };
-  pending.forEach(r => {
-    let reg = r.regional || 'Regional MG';
-    if(r.subReg && (r.subReg.includes('CO') || r.subReg.includes('NO'))) {
-      reg = 'Regional CO/N';
-    } else if(r.subReg && r.subReg.includes('MG')) {
-      reg = 'Regional MG';
-    }
-    byRegional[reg] = (byRegional[reg] || 0) + 1;
-  });
+// Renderiza uma seção regional específica (MG ou CO/N)
+function renderRegionalSection(regionalCode, prefix) {
+  const pending = records.filter(r => r.pendente && r.regional === regionalCode);
   
-  const regionalEntries = Object.entries(byRegional).sort((a,b)=>b[1]-a[1]);
-  const regionalList = document.getElementById('regional-list');
-  regionalList.innerHTML = regionalEntries.length ? regionalEntries.map(([name,count])=>`
-    <div class="compact-row regional-row">
-      <span class="compact-name" title="${name}">${name}</span>
-      <span class="compact-count">${count}</span>
-    </div>
-  `).join('') : '<div class="empty-state">Nenhuma pendência 🎉</div>';
+  // Atualiza Badge do Total
+  document.getElementById(`${prefix}-total-badge`).textContent = `${pending.length} pendência${pending.length !== 1 ? 's' : ''}`;
 
-  // 2. Pendências por unidade
+  // 1. Pendências por Unidade
   const byUnit = {};
-  pending.forEach(r=>{ byUnit[r.hub] = (byUnit[r.hub]||0) + 1; });
-  const unitEntries = Object.entries(byUnit).sort((a,b)=>b[1]-a[1]);
+  pending.forEach(r => { byUnit[r.hub] = (byUnit[r.hub] || 0) + 1; });
+  const unitEntries = Object.entries(byUnit).sort((a,b) => b[1] - a[1]);
   const maxUnit = unitEntries.length ? unitEntries[0][1] : 1;
-  const unitList = document.getElementById('unit-list');
-  unitList.innerHTML = unitEntries.length ? unitEntries.map(([name,count])=>`
+  const unitList = document.getElementById(`${prefix}-unit-list`);
+  unitList.innerHTML = unitEntries.length ? unitEntries.map(([name, count]) => `
     <div class="unit-row">
       <div class="unit-name" title="${name}">${name}</div>
       <div class="unit-count">${count}</div>
       <div class="track"><div class="track-fill" style="width:${(count/maxUnit*100).toFixed(0)}%"></div></div>
     </div>`).join('') : '<div class="empty-state">Nenhuma pendência 🎉</div>';
 
-  // 3. Pendências por ANALISTA
+  // 2. Pendências por Analista
   const byAnalystUnit = {};
-  pending.forEach(r=>{
+  pending.forEach(r => {
     if(!byAnalystUnit[r.analyst]) byAnalystUnit[r.analyst] = {};
-    byAnalystUnit[r.analyst][r.hub] = (byAnalystUnit[r.analyst][r.hub]||0) + 1;
+    byAnalystUnit[r.analyst][r.hub] = (byAnalystUnit[r.analyst][r.hub] || 0) + 1;
   });
-  const analystGroups = Object.entries(byAnalystUnit).map(([name, units])=>{
-    const unitEntries = Object.entries(units).sort((a,b)=>b[1]-a[1]);
-    const total = unitEntries.reduce((sum,[,c])=>sum+c, 0);
-    return {name, total, unitEntries};
-  }).sort((a,b)=> b.total - a.total);
-  const analystList = document.getElementById('analyst-list');
-  analystList.innerHTML = analystGroups.length ? analystGroups.map(a=>`
+  const analystGroups = Object.entries(byAnalystUnit).map(([name, units]) => {
+    const uEntries = Object.entries(units).sort((a,b) => b[1] - a[1]);
+    const total = uEntries.reduce((sum, [, c]) => sum + c, 0);
+    return { name, total, unitEntries: uEntries };
+  }).sort((a,b) => b.total - a.total);
+
+  const analystList = document.getElementById(`${prefix}-analyst-list`);
+  analystList.innerHTML = analystGroups.length ? analystGroups.map(a => `
     <div class="analyst-group">
       <div class="analyst-group-head">
         <span class="analyst-group-name" title="${a.name}">${a.name}</span>
         <span class="analyst-group-count">${a.total}</span>
       </div>
-      ${a.unitEntries.map(([unit,count])=>`
+      ${a.unitEntries.map(([unit, count]) => `
         <div class="analyst-unit-row">
           <span class="analyst-unit-name" title="${unit}">${unit}</span>
           <span class="analyst-unit-count">${count}</span>
@@ -660,18 +692,36 @@ function render(){
     </div>
   `).join('') : '<div class="empty-state">Nenhum analista com pendências! 🎉</div>';
 
-  // 4. Pendências por SUB REGIONAL
+  // 3. Pendências por Sub Regional
   const bySubReg = {};
-  pending.forEach(r=>{ bySubReg[r.subReg] = (bySubReg[r.subReg]||0) + 1; });
-  const subRegEntries = Object.entries(bySubReg).sort((a,b)=>b[1]-a[1]);
-  const subregList = document.getElementById('subreg-list');
-  subregList.innerHTML = subRegEntries.length ? subRegEntries.map(([name,count])=>`
+  pending.forEach(r => { bySubReg[r.subReg] = (bySubReg[r.subReg] || 0) + 1; });
+  const subRegEntries = Object.entries(bySubReg).sort((a,b) => b[1] - a[1]);
+  const subregList = document.getElementById(`${prefix}-subreg-list`);
+  subregList.innerHTML = subRegEntries.length ? subRegEntries.map(([name, count]) => `
     <div class="compact-row subreg-row">
       <span class="compact-name" title="${name}">${name}</span>
       <span class="compact-count">${count}</span>
     </div>
   `).join('') : '<div class="empty-state">Nenhuma pendência por Sub Regional 🎉</div>';
+}
 
+function render(){
+  const total = records.length;
+  const pending = records.filter(r => r.pendente);
+  const done = total - pending.length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  // KPIs
+  document.getElementById('kpi-pending').textContent = pending.length;
+  document.getElementById('kpi-done').textContent = done;
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-pct').textContent = pct + '%';
+
+  // Renderiza Seção MG e Seção CO/N
+  renderRegionalSection('MG', 'mg');
+  renderRegionalSection('CO/N', 'con');
+
+  // Filtros da tabela
   const unitFilter = document.getElementById('unit-filter');
   const currentUnitVal = unitFilter.value;
   unitFilter.innerHTML = '<option value="">Todas as unidades</option>' +
