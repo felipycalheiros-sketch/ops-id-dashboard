@@ -341,7 +341,7 @@
       <strong>Notas de filtragem e segurança:</strong><br>
       • O nome do Hub/Unidade é sempre baseado no título da aba da planilha.<br>
       • A Sub Regional é extraída diretamente da célula <strong>C1</strong> de cada aba.<br>
-      • Os cargos que contêm "Regional", "Sub Regional" ou "Site Leader" são excluídos automaticamente da contagem.<br>
+      • Os cargos que contêm "Regional", "Sub Regional", "Site Leader" ou "Analista" são excluídos automaticamente da contagem.<br>
       • Abas que contenham no título palavras-chave como "Query", "Consolidado", "Summary", "Modelo" e "Base" são ignoradas para evitar duplicidade de registros.<br>
       • Os nomes dos analistas são extraídos diretamente do campo "PTS Regional: [Nome]" localizado na primeira linha de cada aba.
     </div>
@@ -361,8 +361,27 @@ let tokenClient;
 let records = [];
 let isGapiLoaded = false;
 let isGisLoaded = false;
+
+// EXCLUSÃO GLOBAL DE CARGOS (Incluído 'analista' conforme solicitado)
 const EXCLUDED_KEYWORDS = ['site leader', 'regional', 'sub regional', 'líder', 'analista']; 
 const BLOCKED_SHEET_KEYWORDS = ['query','consolidado','summary','modelo','cargos','base nomes','duplicar'];
+
+// CONTROLE DE ATUALIZAÇÃO AUTOMÁTICA (1 MINUTO)
+let autoRefreshTimer = null;
+const REFRESH_INTERVAL_MINUTES = 1;
+
+function iniciarAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+
+  const tempoMs = REFRESH_INTERVAL_MINUTES * 60 * 1000;
+
+  autoRefreshTimer = setInterval(() => {
+    const tokenSalvo = localStorage.getItem('g_oauth_token');
+    if (tokenSalvo) {
+      fetchAllSheetsFromGoogle();
+    }
+  }, tempoMs);
+}
 
 window.addEventListener('load', () => {
   if (typeof gapi !== 'undefined') gapi.load('client', gapiInit);
@@ -404,6 +423,9 @@ async function verificarTokenSalvo() {
     gapi.client.setToken({ access_token: tokenSalvo });
     definirInterfaceConectado();
     fetchAllSheetsFromGoogle();
+    
+    // Inicia a atualização automática a cada 1 minuto
+    iniciarAutoRefresh();
   } else {
     definirInterfaceDesconectado();
   }
@@ -445,6 +467,9 @@ function handleAuthResponse(resp){
   }
   definirInterfaceConectado();
   fetchAllSheetsFromGoogle();
+  
+  // Inicia a atualização automática a cada 1 minuto
+  iniciarAutoRefresh();
 }
 
 function extractAnalyst(rows){
