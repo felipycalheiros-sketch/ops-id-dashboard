@@ -393,28 +393,25 @@ function iniciarAutoRefresh() {
   }, tempoMs);
 }
 
-// FUNÇÃO PARA COPIAR O RESUMO FORMATADO PARA O SEATALK
+// FUNÇÃO PARA COPIAR O RESUMO FORMATADO PARA O SEATALK COM LINK DIRETO
 function copiarResumoSeaTalk() {
   if (!records.length) {
     alert('Aguarde os dados carregarem antes de copiar o resumo.');
     return;
   }
 
-  const total = records.length;
   const pendingMG = records.filter(r => r.pendente && r.regional === 'MG').length;
   const pendingCON = records.filter(r => r.pendente && r.regional === 'CO/N').length;
   const totalPending = pendingMG + pendingCON;
-  const concluidos = total - totalPending;
-  const pct = total > 0 ? ((concluidos / total) * 100).toFixed(1) : '0';
   const dataHoje = new Date().toLocaleDateString('pt-BR');
+
+  const linkPainel = "https://felipycalheiros-sketch.github.io/ops-id-dashboard/indicador-ops-id.html";
 
   const textoResumo = `📊 *Resumo Diário — Ops ID (${dataHoje})*\n\n` +
                       `🔴 *Pendentes MG:* ${pendingMG}\n` +
                       `🔴 *Pendentes CO/N:* ${pendingCON}\n` +
                       `⚠️ *Total Pendentes Geral:* ${totalPending}\n\n` +
-                      `✅ *Concluídos:* ${concluidos} (${pct}%)\n` +
-                      `📦 *Total de Registros:* ${total}\n\n` +
-                      `@All Divulguem nos Hubs por gentileza.`;
+                      `@All para mais detalhes acessem o painel: ${linkPainel}`;
 
   navigator.clipboard.writeText(textoResumo).then(() => {
     const btn = document.getElementById('btn-copy-seatalk');
