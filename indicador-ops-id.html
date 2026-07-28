@@ -73,6 +73,7 @@
   .connection-info{display:flex;flex-direction:column;gap:2px;}
   .connection-title{font-size:12.5px;font-weight:700;color:var(--text);}
   .connection-status{font-size:11.5px;color:var(--text-dim);}
+  .action-buttons{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
   .btn-google{background:var(--brand);color:#fff;border:none;font-weight:700;padding:8px 14px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;transition:transform .15s, box-shadow .15s, background-color .15s;display:flex;align-items:center;gap:6px;box-shadow:var(--shadow-xs);}
   .btn-google:hover{background:#2941b8;box-shadow:var(--shadow-sm);transform:translateY(-1px);}
   .btn-google:active{transform:translateY(0);}
@@ -82,6 +83,10 @@
   .btn-google.connected svg{display:none;}
   .btn-google:disabled{opacity:.6;cursor:wait;}
   .btn-google:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+
+  .btn-seatalk{background:var(--surface-2);color:var(--text);border:1px solid var(--line-strong);font-weight:700;padding:8px 14px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;box-shadow:var(--shadow-xs);}
+  .btn-seatalk:hover{background:var(--brand-dim);border-color:var(--brand);color:var(--brand);transform:translateY(-1px);}
+  .btn-seatalk.copied{background:var(--done-dim);border-color:var(--done);color:var(--done);}
 
   #dashboard{display:none;}
   #dashboard.show{display:block;}
@@ -227,10 +232,15 @@
       <div class="connection-title">Conexão direta com as Matrizes FLM</div>
       <div class="connection-status" id="connection-status">Aguardando conexão com sua conta Google...</div>
     </div>
-    <button class="btn-google" id="btn-login">
-      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M21.35 11.1H12v2.7h5.38c-.23 1.22-.92 2.25-1.95 2.94v2.44h3.15c1.84-1.7 2.9-4.2 2.9-7.18 0-.54-.05-1.07-.13-1.6z"/><path d="M12 20.6c2.43 0 4.47-.8 5.96-2.2l-3.15-2.44c-.87.58-1.99.94-2.81.94-2.16 0-4-1.46-4.66-3.42H4.1v2.53C5.6 18.4 8.54 20.6 12 20.6z" fill="#34A853"/><path d="M7.34 13.48c-.17-.5-.26-1.03-.26-1.58s.09-1.08.26-1.58V7.79H4.1c-.6 1.2-1 2.56-1 4.01s.4 2.81 1 4.01l3.24-2.53z" fill="#FBBC05"/><path d="M12 7.1c1.32 0 2.5.45 3.44 1.35l2.58-2.58C16.46 4.34 14.43 3.4 12 3.4 8.54 3.4 5.6 5.6 4.1 8.59l3.24 2.53c.66-1.96 2.5-3.42 4.66-3.42z" fill="#EA4335"/></svg>
-      Conectar com Google
-    </button>
+    <div class="action-buttons">
+      <button class="btn-seatalk" id="btn-copy-seatalk" onclick="copiarResumoSeaTalk()">
+        📋 Copiar Resumo SeaTalk
+      </button>
+      <button class="btn-google" id="btn-login">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M21.35 11.1H12v2.7h5.38c-.23 1.22-.92 2.25-1.95 2.94v2.44h3.15c1.84-1.7 2.9-4.2 2.9-7.18 0-.54-.05-1.07-.13-1.6z"/><path d="M12 20.6c2.43 0 4.47-.8 5.96-2.2l-3.15-2.44c-.87.58-1.99.94-2.81.94-2.16 0-4-1.46-4.66-3.42H4.1v2.53C5.6 18.4 8.54 20.6 12 20.6z" fill="#34A853"/><path d="M7.34 13.48c-.17-.5-.26-1.03-.26-1.58s.09-1.08.26-1.58V7.79H4.1c-.6 1.2-1 2.56-1 4.01s.4 2.81 1 4.01l3.24-2.53z" fill="#FBBC05"/><path d="M12 7.1c1.32 0 2.5.45 3.44 1.35l2.58-2.58C16.46 4.34 14.43 3.4 12 3.4 8.54 3.4 5.6 5.6 4.1 8.59l3.24 2.53c.66-1.96 2.5-3.42 4.66-3.42z" fill="#EA4335"/></svg>
+        Conectar com Google
+      </button>
+    </div>
   </div>
 
   <div id="dashboard">
@@ -362,7 +372,7 @@ let records = [];
 let isGapiLoaded = false;
 let isGisLoaded = false;
 
-// EXCLUSÃO GLOBAL DE CARGOS (Incluído 'analista' conforme solicitado)
+// EXCLUSÃO GLOBAL DE CARGOS
 const EXCLUDED_KEYWORDS = ['site leader', 'regional', 'sub regional', 'líder', 'analista']; 
 const BLOCKED_SHEET_KEYWORDS = ['query','consolidado','summary','modelo','cargos','base nomes','duplicar'];
 
@@ -381,6 +391,42 @@ function iniciarAutoRefresh() {
       fetchAllSheetsFromGoogle();
     }
   }, tempoMs);
+}
+
+// FUNÇÃO PARA COPIAR O RESUMO FORMATADO PARA O SEATALK
+function copiarResumoSeaTalk() {
+  if (!records.length) {
+    alert('Aguarde os dados carregarem antes de copiar o resumo.');
+    return;
+  }
+
+  const total = records.length;
+  const pendingMG = records.filter(r => r.pendente && r.regional === 'MG').length;
+  const pendingCON = records.filter(r => r.pendente && r.regional === 'CO/N').length;
+  const totalPending = pendingMG + pendingCON;
+  const concluidos = total - totalPending;
+  const pct = total > 0 ? ((concluidos / total) * 100).toFixed(1) : '0';
+  const dataHoje = new Date().toLocaleDateString('pt-BR');
+
+  const textoResumo = `📊 *Resumo Diário — Ops ID (${dataHoje})*\n\n` +
+                      `🔴 *Pendentes MG:* ${pendingMG}\n` +
+                      `🔴 *Pendentes CO/N:* ${pendingCON}\n` +
+                      `⚠️ *Total Pendentes Geral:* ${totalPending}\n\n` +
+                      `✅ *Concluídos:* ${concluidos} (${pct}%)\n` +
+                      `📦 *Total de Registros:* ${total}\n\n` +
+                      `@All Divulguem nos Hubs por gentileza.`;
+
+  navigator.clipboard.writeText(textoResumo).then(() => {
+    const btn = document.getElementById('btn-copy-seatalk');
+    btn.classList.add('copied');
+    btn.innerHTML = `✅ Copiado! Cole no SeaTalk`;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `📋 Copiar Resumo SeaTalk`;
+    }, 3000);
+  }).catch(err => {
+    alert('Erro ao copiar resumo: ' + err);
+  });
 }
 
 window.addEventListener('load', () => {
@@ -424,7 +470,6 @@ async function verificarTokenSalvo() {
     definirInterfaceConectado();
     fetchAllSheetsFromGoogle();
     
-    // Inicia a atualização automática a cada 1 minuto
     iniciarAutoRefresh();
   } else {
     definirInterfaceDesconectado();
@@ -468,7 +513,6 @@ function handleAuthResponse(resp){
   definirInterfaceConectado();
   fetchAllSheetsFromGoogle();
   
-  // Inicia a atualização automática a cada 1 minuto
   iniciarAutoRefresh();
 }
 
