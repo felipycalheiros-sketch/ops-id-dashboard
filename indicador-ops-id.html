@@ -365,7 +365,11 @@ const SPREADSHEETS = [
   { id: '1qgFSj2J7yIZZgJAkcoXxjiyL5juG-89SCfRNIotPSBs', regional: 'CO/N' }
 ];
 
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+// --- NOVA VARIÁVEL: COLOQUE AQUI O ID DA SUA PLANILHA DE HISTÓRICO ---
+const HISTORICO_SPREADSHEET_ID = 'https://docs.google.com/spreadsheets/d/1jDhuTaIyogYw6qVD1WE9m_B8iBWRrfL_8QMOMwi2SOI/edit?gid=0#gid=0';
+
+// Escopo alterado de .readonly para permitir gravação
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 
 let tokenClient;
 let records = [];
@@ -391,6 +395,55 @@ function iniciarAutoRefresh() {
       fetchAllSheetsFromGoogle();
     }
   }, tempoMs);
+}
+
+// FUNÇÃO PARA GRAVAR O HISTÓRICO DIÁRIO
+async function registrarHistoricoDiario() {
+  // Se o ID da planilha não foi preenchido, não tenta rodar
+  if (HISTORICO_SPREADSHEET_ID === 'COLE_O_ID_DA_PLANILHA_DE_HISTORICO_AQUI') {
+    console.warn("Você esqueceu de preencher o ID da planilha de histórico!");
+    return;
+  }
+
+  const token = localStorage.getItem('g_oauth_token');
+  if (!token || !records.length) return;
+
+  const pendingMG = records.filter(r => r.pendente && r.regional === 'MG').length;
+  const pendingCON = records.filter(r => r.pendente && r.regional === 'CO/N').length;
+  const totalPending = pendingMG + pendingCON;
+
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const hora = new Date().toLocaleTimeString('pt-BR');
+
+  try {
+    // Lê os dados da coluna A para verificar se já salvamos hoje
+    const response = await gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId: HISTORICO_SPREADSHEET_ID,
+      range: 'A:A',
+    });
+
+    const datasRegistradas = (response.result.values || []).flat();
+
+    // Se a data de hoje já estiver na planilha, encerra a função
+    if (datasRegistradas.includes(hoje)) {
+      console.log(`Histórico do dia ${hoje} já foi gravado anteriormente.`);
+      return;
+    }
+
+    // Se não tiver, adiciona uma nova linha
+    const values = [[hoje, hora, pendingMG, pendingCON, totalPending]];
+    await gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId: HISTORICO_SPREADSHEET_ID,
+      range: 'A1',
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      resource: { values: values },
+    });
+
+    console.log(`Histórico gravado com sucesso para o dia ${hoje}!`);
+  } catch (err) {
+    console.error('Erro ao registrar histórico no Google Sheets:', err);
+  }
 }
 
 // FUNÇÃO PARA COPIAR O RESUMO FORMATADO PARA O SEATALK COM LINK DIRETO
@@ -565,6 +618,7 @@ async function fetchAllSheetsFromGoogle(){
     }));
 
     render();
+    registrarHistoricoDiario(); // <--- CHAMADA DA GRAVAÇÃO DE HISTÓRICO ADICIONADA AQUI
     document.getElementById('dashboard').classList.add('show');
     document.getElementById('connection-status').textContent = `Sincronizado diretamente com as planilhas oficiais.`;
     const clock = document.getElementById('clock');
